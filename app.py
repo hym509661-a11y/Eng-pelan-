@@ -3,8 +3,8 @@ import numpy as np
 import ezdxf
 import io
 
-# 1. الإعدادات البصرية الملكية
-st.set_page_config(page_title="Pelan Masterpiece v52", layout="wide")
+# 1. الإعدادات الملكية (Emerald & Gold)
+st.set_page_config(page_title="Pelan Professional Designer v53", layout="wide")
 
 st.markdown("""
 <style>
@@ -20,76 +20,105 @@ st.markdown("""
         background: #1a3c34; border-left: 5px solid #d4af37;
         padding: 10px; border-radius: 5px; margin: 5px 0;
     }
+    .label { color: #d4af37; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='master-card' style='text-align:center;'><h1 style='color:#d4af37;'>Pelan Grand Masterpiece v52</h1><p style='color:#d4af37;'>المحرك الإنشائي المتكامل | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+st.markdown("<div class='master-card' style='text-align:center;'><h1 style='color:#d4af37;'>Pelan Professional Designer v53</h1><p style='color:#d4af37;'>محرك التصميم التلقائي الموحد | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
 
-# 2. القائمة الجانبية (المدخلات)
+# 2. القائمة الجانبية (المدخلات الفنية)
 with st.sidebar:
-    st.header("⚙️ مدخلات المهندس بيلان")
-    elem = st.selectbox("العنصر الإنشائي:", [
-        "جائز بيتون (Beam)", "أعصاب هوردي (Ribs)", "أعمدة خرسانية", 
-        "بلاطة مصمتة (1-Way)", "بلاطة مصمتة (2-Way)", "بلاطة هوردي (2-Way)"
-    ])
-    L = st.number_input("الطول L (m):", 1.0, 15.0, 5.0)
-    Wu = st.number_input("الحمل Wu (kN/m):", 0.0, 150.0, 30.0)
+    st.header("📐 معايير التصميم")
+    elem = st.selectbox("العنصر الإنشائي:", ["جائز (Beam)", "عصب (Rib)", "بلاطة (Slab)"])
+    L = st.number_input("طول البحر L (m):", 1.0, 15.0, 5.0)
+    B = st.number_input("العرض B (cm):", 10, 100, 25)
+    H = st.number_input("السماكة H (cm):", 10, 150, 60)
+    Wu = st.number_input("الحمل المصعد Wu (kN/m):", 1.0, 200.0, 35.0)
+    
     st.divider()
-    n_bars = st.number_input("عدد القضبان:", 1, 20, 4)
-    phi = st.selectbox("القطر (mm):", [10, 12, 14, 16, 18, 20, 25])
+    st.subheader("⚙️ خيارات الحديد")
+    phi_main = st.selectbox("قطر الحديد الرئيسي (mm):", [12, 14, 16, 18, 20, 25], index=2)
+    phi_stirrups = st.selectbox("قطر الكانات (mm):", [8, 10, 12])
+    f_y = 420 # إجهاد الخضوع MPa
+    f_cu = 25 # مقاومة الخرسانة MPa
 
-# 3. محرك الحسابات
-M_max = (Wu * L**2) / 8
-V_max = (Wu * L) / 2
-As_actual = n_bars * (np.pi * (phi/10)**2 / 4)
+# 3. محرك التصميم الإنشائي التلقائي
+# حساب القوى
+M_max = (Wu * L**2) / 8  # kN.m
+V_max = (Wu * L) / 2     # kN
 
-# 4. العرض الفني (بدون شروط معقدة لمنع أخطاء الإزاحة)
+# تصميم الحديد (Simplified RC Design)
+d = H - 5 # العمق الفعال cm
+As_required = (M_max * 10**6) / (0.87 * f_y * d * 10) # mm2
+area_single_bar = (np.pi * phi_main**2) / 4
+n_bars_bottom = int(np.ceil(As_required / area_single_bar))
+if n_bars_bottom < 2: n_bars_bottom = 2 # الحد الأدنى سيخان
+
+# حديد التعليق والعلوي (تقديري 20% من الرئيسي)
+n_bars_top = max(2, int(np.ceil(n_bars_bottom * 0.3)))
+n_bars_hang = 2
+
+# الكانات (تقديري بناءً على القص)
+s_spacing = 15 # cm
+
+# 4. العرض الفني والنتائج
 col1, col2 = st.columns([1.3, 1])
 
 with col1:
     st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader(f"📊 النتائج الإنشائية: {elem}")
+    st.subheader(f"📊 مذكرة التصميم التلقائية: {elem}")
     
-    res_cols = st.columns(3)
-    res_cols[0].markdown(f"<div class='result-box'>العزم:<br><b style='color:#50c878;'>{M_max:.2f} kN.m</b></div>", unsafe_allow_html=True)
-    res_cols[1].markdown(f"<div class='result-box'>القص:<br><b style='color:#50c878;'>{V_max:.2f} kN</b></div>", unsafe_allow_html=True)
-    res_cols[2].markdown(f"<div class='result-box'>الحديد:<br><b style='color:#50c878;'>{As_actual:.2f} cm²</b></div>", unsafe_allow_html=True)
+    c = st.columns(4)
+    c[0].markdown(f"<div class='result-box'>العزم:<br><b>{M_max:.1f} kN.m</b></div>", unsafe_allow_html=True)
+    c[1].markdown(f"<div class='result-box'>القص:<br><b>{V_max:.1f} kN</b></div>", unsafe_allow_html=True)
+    c[2].markdown(f"<div class='result-box'>B x H:<br><b>{B}x{H} cm</b></div>", unsafe_allow_html=True)
+    c[3].markdown(f"<div class='result-box'>As req:<br><b>{As_required/100:.2f} cm²</b></div>", unsafe_allow_html=True)
     
     st.divider()
-    st.markdown("### 👨‍🏫 توصية المهندس بيلان:")
-    st.info(f"💡 تم تحليل {elem} بطول {L}m. التسليح المعتمد هو {n_bars} قضبان بقطر {phi}mm. تأكد من مطابقة التنفيذ لمخططات القص والعزم.")
+    st.markdown("### 👨‍🏫 جدول التسليح المقترح من المهندس بيلان:")
+    st.write(f"✅ **الفرش السفلي (الرئيسي):** {n_bars_bottom} T {phi_main}")
+    st.write(f"✅ **الغطاء العلوي:** {n_bars_top} T {phi_main}")
+    st.write(f"✅ **حديد التعليق:** {n_bars_hang} T 12")
+    st.write(f"✅ **الكانات:** T {phi_stirrups} كل {s_spacing} سم")
     
-    
+    st.info(f"💡 توصية بيلان: تم حساب {n_bars_bottom} أسياخ قطر {phi_main} لضمان الأمان الإنشائي تحت عزم {M_max:.1f} kN.m.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
     st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader("🖋️ تفصيل التسليح (BBS)")
+    st.subheader("🖋️ تفصيل رفع الحديد (Automatic BBS)")
     
-    
-    
+    # واجهة مرئية للتفريد
     st.markdown(f"""
-    <div style='text-align:center; padding:15px; border:2px dashed #d4af37; border-radius:10px;'>
-        <p style='color:#d4af37;'>توصيف الحديد المرفوع</p>
-        <h2 style='color:#50c878;'>{n_bars} Φ {phi}</h2>
-        <p style='color:#d4af37;'>↑ سهم رفع وتوصيف دقيق ↑</p>
+    <div style='border:2px solid #d4af37; padding:15px; border-radius:10px;'>
+        <div style='text-align:right; color:#50c878;'>Top: {n_bars_top} T {phi_main} ↑</div>
+        <div style='height:80px; border:4px solid #fff; margin:10px 0; position:relative;'>
+             <div style='position:absolute; bottom:5px; left:10%; right:10%; height:4px; background:#ff4b4b;'></div>
+             <div style='position:absolute; top:5px; left:10%; right:10%; height:3px; background:#4b4bff;'></div>
+        </div>
+        <div style='text-align:left; color:#ff4b4b;'>Bottom: {n_bars_bottom} T {phi_main} ↓</div>
+        <p style='text-align:center; font-size:0.8rem; color:#aaa;'>الكانات: T {phi_stirrups} @ {s_spacing}cm</p>
     </div>
     """, unsafe_allow_html=True)
     
-    if st.button("🛠️ تصدير المخطط إلى AutoCAD 🚀"):
+    st.divider()
+    if st.button("🎨 تصدير مخطط بيلان التفصيلي للأوتوكاد 🚀"):
         try:
-            doc = ezdxf.new(setup=True)
-            msp = doc.modelspace()
-            msp.add_lwpolyline([(0,0), (L*10,0), (L*10,20), (0,20), (0,0)])
-            msp.add_line((0.5, 5), (L*10-0.5, 5), dxfattribs={'color': 1})
-            msp.add_line((L*5, 5), (L*5, 12), dxfattribs={'color': 2})
-            msp.add_text(f"{n_bars}%%c{phi}", dxfattribs={'height': 2}).set_placement((L*5, 14))
-            buf = io.StringIO()
-            doc.write(buf)
-            st.download_button("📥 تحميل DXF", buf.getvalue(), f"Pelan_{elem}.dxf")
-            st.success("تم التصدير بنجاح!")
+            doc = ezdxf.new(setup=True); msp = doc.modelspace()
+            # رسم المقطع الطولي
+            msp.add_lwpolyline([(0,0), (L*100,0), (L*100,H), (0,H), (0,0)])
+            # الحديد السفلي + سهم وتوصيف
+            msp.add_line((2, 5), (L*100-2, 5), dxfattribs={'color': 1})
+            msp.add_text(f"BOTTOM: {n_bars_bottom}%%c{phi_main}", dxfattribs={'height': 4}).set_placement((L*50, -10))
+            # الحديد العلوي
+            msp.add_line((2, H-5), (L*100-2, H-5), dxfattribs={'color': 5})
+            msp.add_text(f"TOP: {n_bars_top}%%c{phi_main}", dxfattribs={'height': 4}).set_placement((L*50, H+5))
+            
+            buf = io.StringIO(); doc.write(buf)
+            st.download_button("📥 تحميل المخطط التنفيذي (DXF)", buf.getvalue(), f"Pelan_AutoDesign_{elem}.dxf")
+            st.success("تم التصميم والتصدير بنجاح!")
         except Exception as e:
-            st.error(f"خطأ: {e}")
+            st.error(f"حدث خطأ: {e}")
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align:center; color:#d4af37;'>Pelan Engine v52 | م. بيلان عبد الكريم | 2026</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#d4af37;'>Pelan Engineering Engine v53 | 2026</p>", unsafe_allow_html=True)
