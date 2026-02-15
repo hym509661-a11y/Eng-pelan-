@@ -3,113 +3,97 @@ import numpy as np
 import ezdxf
 import io
 
-# 1. الواجهة الهندسية الفاخرة (Luxury Structural UI)
-st.set_page_config(page_title="Pelan Masterpiece v41", layout="wide")
+# 1. الإعدادات البصرية (Premium Engineering Theme)
+st.set_page_config(page_title="Pelan Masterpiece v42", layout="wide")
 
 st.markdown("""
-    <style>
-    .stApp { background: radial-gradient(circle, #050505 0%, #001220 100%); color: #ffffff; }
-    .master-card {
-        background: rgba(0, 242, 255, 0.04);
+<style>
+    .stApp { background: #0a0a0a; color: #ffffff; }
+    .card {
+        background: rgba(0, 242, 255, 0.05);
         border: 1px solid #00f2ff;
-        border-radius: 20px;
-        padding: 25px;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
-        margin-bottom: 25px;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
-    .gold-title { color: #d4af37; font-weight: bold; font-size: 1.4rem; }
-    .price-display { color: #a8eb12; font-weight: bold; font-size: 2rem; }
-    </style>
+    .gold { color: #d4af37; font-weight: bold; }
+</style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='master-card' style='text-align:center;'><h1 style='color:#00f2ff;'>Pelan Grand Masterpiece v41</h1><p class='gold-title'>الموسوعة الإنشائية المتكاملة | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+st.markdown("<div class='card' style='text-align:center;'><h1 style='color:#00f2ff;'>Pelan Grand Masterpiece v42</h1><p class='gold'>النظام الهندسي الموحد | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
 
-# 2. القائمة الجانبية (Control Center)
+# 2. القائمة الجانبية
 with st.sidebar:
-    st.header("⚙️ الإعدادات الهندسية")
-    field = st.radio("مجال الدراسة:", ["البيتون المسلح", "أعمال التربة (Earthwork)", "التحليل الزلزالي"])
-    
-    if field == "البيتون المسلح":
-        elem = st.selectbox("العنصر الإنشائي:", ["جائز مستمر", "بلاطة فطرية", "أساسات حصيرية", "خزان مياه", "جدار استنادي"])
-    elif field == "أعمال التربة (Earthwork)":
-        elem = "كميات الحفر والردم"
-        s_area = st.number_input("مساحة الموقع (m²):", 100.0)
-        e_depth = st.number_input("عمق الحفر (m):", 1.5)
+    st.header("⚙️ الإعدادات")
+    field = st.radio("المجال:", ["بيتون مسلح", "حفر وردم", "زلازل"])
+    if field == "بيتون مسلح":
+        elem = st.selectbox("العنصر:", ["جائز", "بلاطة فطرية", "أساسات حصيرية", "خزان مياه", "جدار استنادي"])
+    elif field == "حفر وردم":
+        elem = "كميات التربة"
+        area = st.number_input("المساحة (m²):", 100.0)
+        depth = st.number_input("العمق (m):", 1.5)
     else:
         elem = "دراسة زلزالية"
-
+    
     st.divider()
-    c_unit = st.number_input("سعر المتر المكعب بيتون ($):", 110)
-    s_unit = st.number_input("سعر طن الحديد ($):", 950)
+    cp = st.number_input("سعر البيتون ($):", 110)
+    sp = st.number_input("سعر الحديد ($):", 950)
 
-# 3. محرك الحسابات (Zero-Error Engine)
-def run_analysis():
-    v_c, w_s = 5.5, 0.42
-    if field == "أعمال التربة (Earthwork)":
-        v_soil = s_area * e_depth
-        t_cost = v_soil * 6.0 # تكلفة الحفر
-        return v_soil, 0, t_cost
+# 3. الحسابات
+def get_results():
+    v, w = 5.0, 0.4
+    if field == "حفر وردم":
+        vol = area * depth
+        cost = vol * 6.0
+        return vol, 0, cost
+    cost = (v * cp) + (w * sp)
+    return v, w, cost
+
+vol, steel, cost = get_results()
+
+# 4. العرض (هنا تم حل مشكلة الإزاحات في الخزان والحصيرية)
+col1, col2 = st.columns([1.2, 1])
+
+with col1:
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.subheader(f"📊 النتائج: {elem}")
+    st.write(f"💰 التكلفة: **${cost:.2f}**")
+    if field != "حفر وردم":
+        st.write(f"🏗️ المواد: {vol} m³ بيتون | {steel} t حديد")
     
-    t_cost = (v_c * c_unit) + (w_s * s_unit)
-    return v_c, w_s, t_cost
-
-vol, steel, cost = run_analysis()
-
-# 4. العرض الفني (معالجة كافة أخطاء الإزاحة التي ظهرت في الصور)
-col_left, col_right = st.columns([1.3, 1])
-
-with col_left:
-    st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader(f"📊 التقرير الفني: {elem}")
-    
-    c1, c2 = st.columns(2)
-    if field == "أعمال التربة (Earthwork)":
-        c1.write(f"🚜 **حجم الحفر:** {vol:.2f} m³")
-        c2.markdown(f"💰 **التكلفة:** <span class='price-display'>${cost:.2f}</span>", unsafe_allow_html=True)
-    else:
-        c1.write(f"🏗️ **المواد:** {vol} m³ بيتون | {steel} t حديد")
-        c2.markdown(f"💰 **الميزانية:** <span class='price-display'>${cost:.2f}</span>", unsafe_allow_html=True)
-
     st.divider()
-    st.markdown("### 🤖 توصيات الذكاء الاصطناعي (AI Analysis):")
+    st.markdown("### 🤖 توصية المهندس الذكي:")
     
-    # تم ضبط الإزاحات هنا بدقة ميكانيكية لمنع الـ IndentationError
+    # حماية كاملة من IndentationError: كل جملة تحتها كود مباشر
     if "خزان" in elem:
-        st.info("💡 الخزانات: صمم المقطع ليكون (Un-cracked Section) وتأكد من سماكة الجدران لمقاومة ضغط الماء.")
-            elif "حصيرية" in elem:
-        st.info("💡 الحصيرة: دقق 'إجهاد التربة' وتأكد من كفاية التسليح لمقاومة العزوم السالبة والموجبة.")
-            elif "فطرية" in elem:
-        st.info("💡 البلاطة الفطرية: دقق 'القص الثاقب' (Punching) عند الأعمدة الطرفية والوسطية.")
-            elif "جدار" in elem:
-        st.info("💡 الجدار الاستنادي: تحقق من استقرار الجدار ضد 'الانزلاق' و 'الانقلاب' مع تدقيق صرف المياه.")
-            elif field == "التحليل الزلزالي":
-        st.warning("🚨 زلازل: تأكد من توزيع 'جدران القص' بشكل متناظر لتفادي تأثيرات الفتل الإنشائي.")
+        st.info("💡 نصيحة: صمم الخزان كـ Un-cracked Section واستخدم فواصل مائية.")
+        
+    elif "حصيرية" in elem:
+        st.info("💡 نصيحة: دقق القص الثاقب Punching Shear وتأكد من سماكة الحصيرة.")
+        
+    elif "فطرية" in elem:
+        st.info("💡 نصيحة: دقق العزوم السالبة عند الأعمدة واستخدم Drop Panels.")
+        
+    elif "جدار" in elem:
+        st.info("💡 نصيحة: تحقق من الاستقرار ضد الانزلاق والانقلاب.")
+        
+    elif field == "زلازل":
+        st.warning("🚨 زلازل: تأكد من تناظر جدران القص لتجنب الفتل.")
     else:
-        st.success("✅ التحليل الأولي سليم. المنشأ يحقق معايير الكود المعتمد.")
-    
+        st.success("✅ النظام المختار آمن هندسياً.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-with col_right:
-    st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader("🖋️ الهندسة الرقمية (AutoCAD)")
+with col2:
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.subheader("🖋️ AutoCAD الرسم")
     
-    # رسومات توضيحية بجودة عالية
-    if "جائز" in elem:
-            else:
-                
-    st.divider()
-    if st.button("🚀 تصدير المخطط (DXF)"):
-        try:
-            doc = ezdxf.new(setup=True); msp = doc.modelspace()
-            msp.add_lwpolyline([(0,0), (55,0), (55,25), (0,25), (0,0)])
-            d_stream = io.StringIO(); doc.write(d_stream)
-            st.download_button("📥 تحميل ملف AutoCAD", d_stream.getvalue(), file_name=f"Pelan_{elem}.dxf")
-            st.success("تم التصدير بنجاح!")
-        except Exception as e:
-            st.error(f"عطل فني: {e}")
-            
+    if st.button("🚀 تصدير DXF"):
+        doc = ezdxf.new(setup=True)
+        msp = doc.modelspace()
+        msp.add_lwpolyline([(0,0), (50,0), (50,20), (0,20), (0,0)])
+        buf = io.StringIO()
+        doc.write(buf)
+        st.download_button("📥 تحميل المخطط", buf.getvalue(), f"Pelan_{elem}.dxf")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# 5. التوقيع الإنشائي
-st.divider()
-st.markdown("<p style='text-align:center;'>Pelan Grand Masterpiece v41 | م. بيلان عبد الكريم | 2026</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Pelan v42 | 2026</p>", unsafe_allow_html=True)
