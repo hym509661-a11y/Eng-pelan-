@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --- واجهة المهندس بيلان عبد الكريم ---
-st.set_page_config(page_title="Bilan-Engineering Pro", layout="wide")
+st.set_page_config(page_title="Bilan Engineering Pro", layout="wide")
 
 st.markdown("""
     <div style="background-color:#002b5c;padding:20px;border-radius:15px;text-align:center;">
-        <h1 style="color:white;margin:0;">Bilan-Engineering Suite v11.0</h1>
+        <h1 style="color:white;margin:0;">Bilan Engineering Ultimate v12</h1>
         <p style="color:#00d1ff;font-size:22px;">تصميم وإشراف: المهندس بيلان عبدالكريم</p>
     </div>
 """, unsafe_allow_html=True)
@@ -36,8 +36,10 @@ with st.sidebar:
 # --- محرك الحسابات والمخططات ---
 d = h - 5
 m_c, v_c, d_c = 0.125, 0.5, 5/384
-if support == "كابولي": m_c, v_c, d_c = 0.5, 1.0, 1/8
-elif support == "وثاقة": m_c, v_c, d_c = 1/12, 0.5, 1/384
+if support == "كابولي": 
+    m_c, v_c, d_c = 0.5, 1.0, 1/8
+elif support == "وثاقة": 
+    m_c, v_c, d_c = 1/12, 0.5, 1/384
 
 Mu = wu * (L**2) * m_c
 Vu = wu * L * v_c
@@ -51,36 +53,41 @@ col1, col2 = st.columns([1.2, 1])
 
 with col1:
     st.subheader("📑 المذكرة الحسابية التفصيلية")
-    st.latex(r"M_u = \alpha \cdot W_u \cdot L^2 = " + f"{Mu:.2f} \text{{ t.m}}")
-    st.latex(r"V_u = \beta \cdot W_u \cdot L = " + f"{Vu:.2f} \text{{ t}}")
-    st.latex(r"A_s = \frac{M_u}{0.87 \cdot f_y \cdot d} = " + f"{As:.2f} \text{{ cm}}^2")
+    st.latex(r"M_u = \alpha \cdot W_u \cdot L^2 = " + f"{Mu:.2f} " + r"\text{ t.m}")
+    st.latex(r"V_u = \beta \cdot W_u \cdot L = " + f"{Vu:.2f} " + r"\text{ t}")
+    st.latex(r"A_s = \frac{M_u}{0.87 \cdot f_y \cdot d} = " + f"{As:.2f} " + r"\text{ cm}^2")
     
     bar_area = (np.pi * (phi/10)**2) / 4
     n_bars = int(np.ceil(As/bar_area))
-    st.success(f"النتيجة النهائية: {max(n_bars, 2)} T{phi}")
+    st.success(f"التسليح المقترح: {max(n_bars, 2)} T{phi}")
     
     st.write("### تدقيق السهم (Deflection):")
-    st.latex(r"\delta_{act} = " + f"{delta:.2f} \text{{ mm}} \leq \delta_{{all}} = {(L*1000/250):.2f} \text{{ mm}}")
+    st.latex(r"\delta_{act} = " + f"{delta:.2f} " + r"\text{ mm} \leq \delta_{all} = " + f"{(L*1000/250):.2f} " + r"\text{ mm}")
 
 with col2:
-    st.subheader("📊 مخططات القوى (B.M.D & S.F.D)")
-    # رسم المخططات
+    st.subheader("📊 مخططات العزم والقص")
     x_plot = np.linspace(0, L, 100)
-    if support == "بسيط": m_plot = (wu*x_plot/2)*(L-x_plot); v_plot = wu*(L/2 - x_plot)
-    elif support == "كابولي": m_plot = -(wu*(L-x_plot)**2)/2; v_plot = wu*(L-x_plot)
-    else: m_plot = (wu*L*x_plot/2) - (wu*x_plot**2/2) - (wu*L**2/12); v_plot = wu*(L/2 - x_plot)
+    if support == "بسيط": 
+        m_plot = (wu*x_plot/2)*(L-x_plot)
+        v_plot = wu*(L/2 - x_plot)
+    elif support == "كابولي": 
+        m_plot = -(wu*(L-x_plot)**2)/2
+        v_plot = wu*(L-x_plot)
+    else: 
+        m_plot = (wu*L*x_plot/2) - (wu*x_plot**2/2) - (wu*L**2/12)
+        v_plot = wu*(L/2 - x_plot)
     
     fig, ax = plt.subplots(2, 1, figsize=(5, 5))
-    ax[0].plot(x_plot, m_plot, 'r'); ax[0].fill_between(x_plot, m_plot, color='r', alpha=0.1); ax[0].set_title("Moment")
-    ax[1].plot(x_plot, v_plot, 'b'); ax[1].fill_between(x_plot, v_plot, color='b', alpha=0.1); ax[1].set_title("Shear")
+    ax[0].plot(x_plot, m_plot, 'r'); ax[0].fill_between(x_plot, m_plot, color='r', alpha=0.1); ax[0].set_title("Moment (M)")
+    ax[1].plot(x_plot, v_plot, 'b'); ax[1].fill_between(x_plot, v_plot, color='b', alpha=0.1); ax[1].set_title("Shear (V)")
     st.pyplot(fig)
 
 st.divider()
-st.subheader("🎨 المخطط الإنشائي")
+st.subheader("🎨 المخطط الإنشائي التوضيحي")
 if "Beam" in choice:
     elif "مصمتة" in choice:
     elif "هوردي" in choice:
     elif "أساس" in choice:
     elif "عمود" in choice:
     
-st.caption("إعداد المهندس بيلان عبد الكريم - 2026")
+st.caption("برمجية المهندس بيلان عبد الكريم - 2026")
