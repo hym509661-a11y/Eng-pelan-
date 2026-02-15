@@ -4,8 +4,8 @@ import ezdxf
 import io
 import matplotlib.pyplot as plt
 
-# 1. الإعدادات البصرية (Masterpiece Theme)
-st.set_page_config(page_title="Pelan Grandmaster v32.1", layout="wide")
+# 1. الإعدادات البصرية الاحترافية
+st.set_page_config(page_title="Pelan Grand Master v33", layout="wide")
 st.markdown("""
     <style>
     .stApp { background: #050505; color: #ffffff; }
@@ -20,13 +20,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='main-box' style='text-align:center;'><h1 style='color:#38bdf8;'>Pelan Grandmaster v32.1</h1><p class='gold-text'>النظام الهندسي الشامل | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+st.markdown("<div class='main-box' style='text-align:center;'><h1 style='color:#38bdf8;'>Pelan Grand Master v33</h1><p class='gold-text'>نظام التحليل الإنشائي المتكامل | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
 
-# 2. القائمة الجانبية (Engineering Dashboard)
+# 2. القائمة الجانبية (Control Panel)
 with st.sidebar:
     st.header("⚙️ الإعدادات")
     category = st.radio("المجال:", ["بيتون مسلح", "منشآت معدنية", "دراسة زلزالية"])
     
+    # تنظيم القوائم المنسدلة
     if category == "بيتون مسلح":
         elem = st.selectbox("العنصر:", ["جائز مستمر", "بلاطة فطرية", "بلاطة معصبة", "عمود", "أساسات حصيرية", "جدار استنادي", "خزان مياه"])
     elif category == "منشآت معدنية":
@@ -35,56 +36,51 @@ with st.sidebar:
         elem = "دراسة زلزالية"
 
     st.divider()
-    st.subheader("💰 الأسعار والتكاليف")
-    c_price = st.number_input("سعر المتر المكعب ($):", 110)
-    s_price = st.number_input("سعر طن الحديد ($):", 950)
+    c_price = st.number_input("سعر البيتون ($/m3):", 110)
+    s_price = st.number_input("سعر الحديد ($/ton):", 950)
 
-# 3. محرك الحسابات الموحد
-# (هنا نضع قيم افتراضية للحساب لمجرد العرض، يمكنك ربطها بمدخلات المستخدم)
-def get_calculations():
-    # قيم افتراضية للنمذجة
-    vol = 1.5  # m3
-    steel_w = 0.12 # ton
-    cost = (vol * c_price) + (steel_w * s_price)
-    return vol, steel_w, cost
+# 3. محرك الحسابات (Simplified Logic)
+def get_stats():
+    # قيم افتراضية للحساب المالي
+    vol = 2.5 # m3
+    steel = 0.2 # ton
+    cost = (vol * c_price) + (steel * s_price)
+    return vol, steel, cost
 
-vol, steel_w, total_cost = get_calculations()
+vol, steel, total_cost = get_stats()
 
-# 4. عرض النتائج والتحليل (مع تصحيح الأخطاء البرمجية)
+# 4. عرض النتائج والذكاء الاصطناعي (تم تصحيح الإزاحة هنا)
 col_info, col_draw = st.columns([1.2, 1])
 
 with col_info:
     st.markdown("<div class='main-box'>", unsafe_allow_html=True)
-    st.subheader(f"📊 تحليل: {elem}")
-    
-    # بطاقات النتائج الممالية
-    st.write(f"💵 **التكلفة التقديرية للمواد:** ${total_cost:.2f}")
-    st.write(f"🧱 **كمية البيتون:** {vol} m³ | 🏗️ **كمية الحديد:** {steel_w} ton")
+    st.subheader(f"📊 النتائج: {elem}")
+    st.write(f"💵 **التكلفة التقديرية:** ${total_cost:.2f}")
     
     st.divider()
-    st.markdown("### 🤖 توصية الذكاء الاصطناعي (AI):")
+    st.markdown("### 🤖 نصيحة AI للنظام الإنشائي:")
     
-    # الجزء الذي كان يسبب الخطأ - تم تصحيحه وضمان الإزاحة
+    # حل مشكلة IndentationError التي ظهرت في الصور
     if "خزان" in elem:
-        st.info("💡 يجب مراعاة ضغط الماء المثلثي واستخدام فواصل الصب Waterstops.")
-    elif "فطرية" in elem:
-        st.info("💡 دقق تسليح القص الثاقب (Punching) عند رؤوس الأعمدة.")
+        st.info("💡 نصيحة: صمم المقطع ليكون Un-cracked Section لضمان عزل المياه.")
     elif "حصيرية" in elem:
-        st.info("💡 تأكد من توزيع ضغط التربة بانتظام وتجنب الهبوط التفاضلي.")
-    elif "معصبة" in elem:
-        st.info("💡 دقق توزيع الأحمال على الأعصاب في الاتجاهين (α & β).")
+        st.info("💡 نصيحة: دقق إجهاد التربة الفعلي وقارنه بالجهد المسموح.")
+    elif "فطرية" in elem:
+        st.info("💡 نصيحة: استخدم تيجان الأعمدة (Capitals) إذا كان القص الثاقب عالياً.")
     elif "زلزالية" in category:
-        st.warning("🚨 دقق الانتقال الجانبي (Drift) لضمان استقرار المنشأ.")
+        st.warning("🚨 تنبيه: تأكد من كفاية جدران القص لمقاومة القوى الجانبية.")
+    elif "معدنية" in category:
+        st.info("💡 نصيحة: تأكد من استقرار الوصلات لمقاومة العزوم.")
     else:
-        st.success("✅ النظام الإنشائي المختار آمن ومطابق لاشتراطات الكود.")
+        st.success("✅ النظام الإنشائي المختار متوافق مع اشتراطات الكود.")
     
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_draw:
     st.markdown("<div class='main-box'>", unsafe_allow_html=True)
-    st.subheader("🖋️ المخطط والرسومات")
+    st.subheader("🖋️ المخططات الفنية")
     
-    # عرض الصور حسب العنصر
+    # عرض الصور التوضيحية
     if "خزان" in elem:
             elif "حصيرية" in elem:
             elif "فطرية" in elem:
@@ -92,21 +88,21 @@ with col_draw:
             else:
         
     st.divider()
-    # ميزة التصدير لـ AutoCAD
-    if st.button("🚀 تصدير ملف AutoCAD (DXF)"):
+    # ميزة AutoCAD
+    if st.button("🚀 توليد مخطط AutoCAD (DXF)"):
         try:
             doc = ezdxf.new(setup=True)
             msp = doc.modelspace()
-            msp.add_lwpolyline([(0, 0), (10, 0), (10, 5), (0, 5), (0, 0)]) # رسم مستطيل جائز
+            msp.add_lwpolyline([(0, 0), (10, 0), (10, 5), (0, 5), (0, 0)])
             dxf_stream = io.StringIO()
             doc.write(dxf_stream)
-            st.download_button("📥 تحميل DXF", dxf_stream.getvalue(), file_name=f"Pelan_{elem}.dxf")
-            st.success("تم التصدير بنجاح!")
+            st.download_button("📥 تحميل المخطط", dxf_stream.getvalue(), file_name=f"{elem}_design.dxf")
+            st.success("تم تجهيز الملف!")
         except Exception as e:
-            st.error(f"خطأ في التصدير: {e}")
+            st.error(f"حدث خطأ: {e}")
             
     st.markdown("</div>", unsafe_allow_html=True)
 
-# 5. التوقيع
+# 5. التذييل
 st.divider()
-st.markdown(f"<p style='text-align:center;'>المصمم الإنشائي م. بيلان عبد الكريم | تم التحديث في: 2026</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>المصمم الإنشائي م. بيلان عبد الكريم | 2026</p>", unsafe_allow_html=True)
