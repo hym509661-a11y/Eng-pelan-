@@ -4,91 +4,106 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-# إعدادات واجهة المهندس بيلان
+# --- إعدادات واجهة المهندس بيلان ---
 st.set_page_config(page_title="Bilan-Engineering Suite", layout="wide")
 
 st.markdown("""
     <div style="background-color:#002b5c;padding:20px;border-radius:15px;text-align:center;">
-        <h1 style="color:white;margin:0;">Bilan-Engineering Pro v2.0</h1>
-        <p style="color:#00d1ff;font-size:20px;">تصميم: المهندس بيلان عبدالكريم</p>
+        <h1 style="color:white;margin:0;">Bilan-Engineering Pro v3.0</h1>
+        <p style="color:#00d1ff;font-size:20px;">تصميم وتدقيق: المهندس بيلان عبدالكريم</p>
     </div>
 """, unsafe_allow_html=True)
 
-# قائمة الاختيارات
+# --- المدخلات في القائمة الجانبية ---
 with st.sidebar:
-    st.header("🛠️ لوحة التحكم")
-    category = st.selectbox("العنصر الإنشائي:", 
-        ["بلاطة مصمتة (Solid Slab)", "بلاطة هوردي (Ribbed Slab)", "أساس منفرد (Isolated Footing)", "جائز (Beam)", "عمود (Column)"])
+    st.header("⚙️ معطيات التحليل")
+    support_type = st.selectbox("حالة الاستناد:", 
+        ["بسيط (ثابت-متدحرج)", "وثاقة طرف واحد (كابولي)", "وثاقة من الطرفين"])
+    
+    L = st.number_input("طول البحر L (m):", 1.0, 15.0, 5.0)
+    wu = st.number_input("الحمل الموزع Wu (t/m):", 0.1, 10.0, 2.0)
     
     st.divider()
-    L = st.number_input("الطول أو البحر L (m):", 1.0, 20.0, 5.0)
-    B = st.number_input("العرض B (m):", 0.2, 10.0, 0.3)
-    t = st.number_input("السماكة t (cm):", 10, 100, 25)
+    st.header("📏 المقطع الخرساني")
+    b = st.number_input("العرض b (cm):", 20, 100, 30)
+    h = st.number_input("الارتفاع h (cm):", 20, 150, 60)
+    fcu = st.number_input("fcu (kg/cm2):", 200, 400, 250)
     
     st.divider()
-    phi = st.selectbox("قطر السيخ المستخدم (mm):", [8, 10, 12, 14, 16, 20, 25])
-    fy = 4000
+    phi = st.selectbox("قطر التسليح (mm):", [12, 14, 16, 18, 20])
 
-# المحرك الحسابي
-def solve_design():
-    # حسابات افتراضية للأحمال
-    wu = 1.2 # t/m2
-    Mu = (wu * L**2) / 8
-    d = t - 3 # cover
-    As_req = (Mu * 10**5) / (0.87 * fy * d)
-    
-    # حساب عدد الأسياخ
+# --- المحرك الإنشائي والحسابات ---
+def solve_all():
+    # 1. حساب العزم والمؤشرات
+    if support_type == "بسيط (ثابت-متدحرج)":
+        M_max = (wu * L**2) / 8
+        coef_def = 5/384
+    elif support_type == "وثاقة طرف واحد (كابولي)":
+        M_max = (wu * L**2) / 2
+        coef_def = 1/8
+    else: # وثاقة طرفين
+        M_max = (wu * L**2) / 12
+        coef_def = 1/384
+
+    # 2. حساب التسليح
+    d = h - 5
+    As_req = (abs(M_max) * 10**5) / (0.87 * 4000 * d)
     bar_area = (np.pi * (phi/10)**2) / 4
     n_bars = int(np.ceil(As_req / bar_area))
-    if n_bars < 3: n_bars = 3
     
-    return Mu, As_req, n_bars
+    # 3. حساب السهم (Deflection)
+    # E_c = 4700 * sqrt(fcu) -> تقريباً للتبسيط
+    Ec = 15000 * np.sqrt(fcu) * 10 # t/m2
+    I_gross = (b/100 * (h/100)**3) / 12 # m4
+    delta = (coef_def * wu * L**4) / (Ec * I_gross) * 1000 # mm
+    
+    # حد السهم المسموح (L/250 وفق الكود السوري)
+    delta_allow = (L * 1000) / 250
+    
+    return M_max, As_req, n_bars, delta, delta_allow
 
-Mu, As, bars = solve_design()
+M_max, As, bars, delta, d_allow = solve_all()
 
-# العرض والنتائج
-col1, col2 = st.columns([1.5, 1])
+# --- عرض النتائج ---
+col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader(f"📊 المخطط الإنشائي لـ {category}")
-    fig, ax = plt.subplots(figsize=(10, 5))
+    st.subheader("📊 التحليل الهندسي والمخططات")
+    x = np.linspace(0, L, 100)
+    # رسم مبسط للجائز
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7))
     
-    if "Slab" in category:
-        # رسم البلاطة والفرش
-        ax.add_patch(patches.Rectangle((0, 0), L, B, facecolor='#e0e0e0', edgecolor='black'))
-        for i in range(10): # تمثيل الحديد
-            ax.plot([0, L], [i*B/10, i*B/10], color='red', lw=1, alpha=0.6)
-        ax.set_title("مخطط توزيع فرش التسليح (Bottom Rebars)")
-        
-    elif "Footing" in category:
-        # رسم القاعدة
-        ax.add_patch(patches.Rectangle((0, 0), 2, 2, facecolor='#b0b0b0', edgecolor='black'))
-        ax.add_patch(patches.Rectangle((0.85, 0.85), 0.3, 0.3, facecolor='#606060'))
-        ax.set_title("مسقط أفقي للقاعدة المنفردة وتوزع الأساور")
-        
-    elif "Beam" in category:
-        ax.add_patch(patches.Rectangle((0, 0.4), L, 0.2, facecolor='#cccccc'))
-        ax.plot([0, L], [0.42, 0.42], color='blue', lw=3) # الحديد السفلي
-        ax.set_title("تفريد حديد الجائز (Beam Detailing)")
-        
-    ax.axis('off')
+    # رسم الجائز والمساند
+    ax1.add_patch(patches.Rectangle((0, 0.4), L, 0.2, color='#cccccc'))
+    if "وثاقة" in support_type:
+        ax1.plot([0, 0], [0.2, 0.8], color='black', lw=5)
+    ax1.set_title("Structural System")
+    ax1.axis('off')
+
+    # رسم السهم (الانحناء)
+    y_def = -4 * (delta/10) * (x/L) * (1 - x/L) # تمثيل شكلي
+    ax2.plot(x, y_def, color='blue', ls='--', label='Deflection Shape')
+    ax2.set_title("Deflection Visualization")
+    ax2.legend()
     st.pyplot(fig)
 
 with col2:
-    st.subheader("📝 تقرير المهندس بيلان")
-    st.info(f"العزم التصميمي: {Mu:.2f} t.m")
-    st.success(f"التسليح المحسوب: {bars} T{phi}")
+    st.subheader("📑 تقرير التدقيق الإنشائي")
+    st.metric("العزم M_u", f"{abs(M_max):.2f} t.m")
+    st.metric("التسليح", f"{max(bars, 2)} T{phi}")
     
     st.divider()
-    st.write("### المذكرة الحسابية")
-    st.latex(r"A_s = \frac{M_u}{0.87 \cdot f_y \cdot d}")
-    st.write(f"المساحة المطلوبة: {As:.2f} cm²")
-    st.write(f"المساحة المحققة: {bars * ((np.pi*(phi/10)**2)/4):.2f} cm²")
+    st.write("### ✅ تدقيق السهم (Deflection Check)")
+    st.write(f"- السهم الفعلي: **{delta:.2f} mm**")
+    st.write(f"- السهم المسموح (L/250): **{d_allow:.2f} mm**")
     
-    if "Column" in category and (B*100*t) < 900:
-        st.error("🚨 إنذار الكود السوري: مساحة العمود أقل من 900 سم²")
+    if delta <= d_allow:
+        st.success("الارتحام (السهم) محقق ضمن حدود الكود السوري.")
+    else:
+        st.error("🚨 السهم غير محقق! يرجى زيادة سماكة الجائز (h).")
 
 st.divider()
-st.subheader("🧱 تفاصيل إنشائية توضيحية")
-if "Hordy" in category:
-        st.write("تفصيل توزيع البلوك والحديد في البلاطة الهوردي.")
+st.subheader("📝 المذكرة الحسابية النهائية")
+st.write(f"**المهندس المصمم:** بيلان عبدالكريم")
+st.write(f"**العنصر:** جائز {support_type} بطول {L} متر.")
+st.write("تم حساب العزم والتسليح والتحقق من الصلابة (EI) لضمان عدم حدوث تشققات في اللياسة أو العناصر غير الإنشائية.")
