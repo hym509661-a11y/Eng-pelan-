@@ -4,103 +4,90 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-# --- الترويسة باسم المهندس بيلان ---
-st.set_page_config(page_title="Bilan Engineering Engine", layout="wide")
-st.markdown(f"<h1 style='text-align: center; color: #0047AB;'>Bilan Engineering Design Engine</h1>", unsafe_allow_html=True)
+# --- الترويسة الهندسية ---
+st.set_page_config(page_title="Bilan-Engineering Pro", layout="wide")
+st.markdown(f"<h1 style='text-align: center; color: #1E3A8A;'>Bilan Integrated Design Suite</h1>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='text-align: center;'>المهندس المصمم: بيلان عبدالكريم</h3>", unsafe_allow_html=True)
 st.divider()
 
-# --- مدخلات التصميم ---
+# --- مدخلات النظام ---
 with st.sidebar:
-    st.header("📥 مدخلات التصميم")
-    type_el = st.selectbox("العنصر الإنشائي", ["جائز (Beam)", "عمود (Column)"])
-    L = st.number_input("طول البحر أو الارتفاع (m)", value=5.0)
-    b = st.number_input("العرض b (cm)", value=30)
-    h = st.number_input("الارتفاع h (cm)", value=60)
-    w_dead = st.number_input("الحمل الميت (t/m)", value=2.0)
-    w_live = st.number_input("الحمل الحي (t/m)", value=1.5)
+    st.header("📂 اختيار العنصر الإنشائي")
+    element_type = st.selectbox("نوع العنصر", 
+        ["بلاطة مصمتة (Solid Slab)", "بلاطة هوردي (Ribbed Slab)", "أساس منفرد (Isolated Footing)", "أساس مشترك (Combined Footing)", "جائز (Beam)", "عمود (Column)"])
     
     st.divider()
-    st.header("🔗 خيارات التسليح")
-    phi = st.selectbox("قطر السيخ المستخدم (mm)", [12, 14, 16, 18, 20, 25])
-    fy = 4000  # إجهاد الخضوع للحديد
-
-# --- المحرك الحسابي ---
-w_u = 1.4 * w_dead + 1.6 * w_live
-M_u = (w_u * L**2) / 8  # للعزم البسيط
-As_req = (M_u * 10**5) / (0.87 * fy * (h-5)) # مساحة الحديد المطلوبة تقريبياً
-
-# حساب عدد الأسياخ تلقائياً
-area_single_bar = (np.pi * (phi/10)**2) / 4
-n_bars = int(np.ceil(As_req / area_single_bar))
-if n_bars < 2: n_bars = 2 # الحد الأدنى سيخان
-
-# --- العرض البياني ---
-col_graph, col_calc = st.columns([2, 1])
-
-with col_graph:
-    st.subheader("🖼️ الرسم الهندسي للعنصر")
-    fig, ax = plt.subplots(figsize=(8, 4))
+    st.header("📐 الأبعاد والأحمال")
+    L_span = st.number_input("طول البحر L (m)", value=5.0)
+    B_width = st.number_input("العرض B (m)", value=4.0)
+    thickness = st.number_input("السماكة t (cm)", value=15 if "Solid" in element_type else 25)
     
-    if type_el == "جائز (Beam)":
-        # رسم الجائز بمقياس رسم
-        rect = patches.Rectangle((0, 0), L, h/100, linewidth=2, edgecolor='black', facecolor='#D3D3D3')
-        ax.add_patch(rect)
-        # رسم الأسياخ داخل المقطع
-        for i in range(n_bars):
-            ax.plot([0.1, L-0.1], [0.05, 0.05], color='red', lw=2)
-        ax.set_xlim(-0.5, L+0.5)
-        ax.set_ylim(-0.2, 1)
-        ax.set_title(f"Cross Section: {b}x{h} cm | Length: {L} m")
+    q_all = st.number_input("تحمل التربة (kg/cm²)", value=2.0) if "Footing" in element_type else 0.0
+    load_u = st.number_input("الحمل التصميمي (t/m² أو t)", value=1.2 if "Slab" in element_type else 100.0)
+
+# --- المحرك الحسابي الذكي ---
+def calculate_design(element, L, B, t, load):
+    results = {}
+    fy = 4000
     
-    else: # عمود
-        rect = patches.Rectangle((0, 0), b/100, L, linewidth=2, edgecolor='black', facecolor='#D3D3D3')
-        ax.add_patch(rect)
-        ax.set_xlim(-0.5, 1)
-        ax.set_ylim(-0.5, L+0.5)
-        ax.set_title(f"Column Section: {b}x{h} cm | Height: {L} m")
+    if "Solid" in element:
+        # تصميم بلاطة مصمتة
+        M_u = (load * L**2) / 8
+        As = (M_u * 10**5) / (0.87 * fy * (t-3))
+        results = {"العزم (t.m)": round(M_u, 2), "التسليح المطلوب As (cm²/m)": round(As, 2), "الفرش": f"T12@{200/As*1.13:.0f}mm"}
+        
+    elif "Ribbed" in element:
+        # تصميم بلاطة هوردي
+        M_rib = (load * 0.52 * L**2) / 8 # عرض العصب 52 سم
+        As_rib = (M_rib * 10**5) / (0.87 * fy * (t-5))
+        results = {"عزم العصب (t.m)": round(M_rib, 2), "تسليح العصب": f"{int(np.ceil(As_rib/1.13))} T12"}
+        
+    elif "Isolated" in element:
+        # تصميم أساس منفرد
+        Area_req = (load / (q_all * 10)) * 1.1 # زيادة 10% للوزن الذاتي
+        side = np.sqrt(Area_req)
+        results = {"مساحة القاعدة (m²)": round(Area_req, 2), "الأبعاد": f"{side:.2f} x {side:.2f} m"}
+        
+    return results
 
-    ax.axis('off')
-    st.pyplot(fig)
+res = calculate_design(element_type, L_span, B_width, thickness, load_u)
 
-    # مخططات العزم والقص
-    st.subheader("📉 التحليل الإنشائي (Diagrams)")
-    x = np.linspace(0, L, 100)
-    moments = (w_u * x / 2) * (L - x)
-    
-    fig2, ax2 = plt.subplots(figsize=(8, 3))
-    ax2.fill_between(x, moments, color='blue', alpha=0.3)
-    ax2.set_title("مخطط العزم المنعطف (Bending Moment Diagram)")
-    ax2.invert_yaxis()
-    st.pyplot(fig2)
+# --- العرض المرئي والمذكرة ---
+col_res, col_img = st.columns([1, 1])
 
-with col_calc:
-    st.subheader("📋 تقرير النتائج")
-    st.success(f"الحمل التصميمي $W_u$: {w_u:.2f} t/m")
-    st.info(f"العزم الأعظمي $M_u$: {M_u:.2f} t.m")
+with col_res:
+    st.subheader("📊 النتائج الحسابية")
+    for key, value in res.items():
+        st.metric(label=key, value=value)
     
     st.divider()
-    st.write("### تفاصيل التسليح المحسوبة:")
-    st.metric("عدد الأسياخ المطلوب", f"{n_bars} T{phi}")
-    st.write(f"المساحة المطلوبة: {As_req:.2f} cm²")
-    st.write(f"المساحة المحققة: {n_bars * area_single_bar:.2f} cm²")
-    
-    # تحذير الكود السوري للأعمدة
-    if type_el == "عمود (Column)" and (b * h) < 900:
-        st.error("🚨 تحذير: مساحة المقطع أقل من 900 سم² (مخالف للكود السوري)")
+    st.subheader("📝 المذكرة الحسابية - بيلان عبدالكريم")
+    st.write(f"بناءً على الكود السوري، تم تصميم **{element_type}** بالأبعاد المعطاة.")
+    if "Slab" in element_type:
+        st.write("- يتم توزيـع حديد الفرش في الاتجاه القصير.")
+        st.write("- يتم وضع كراسي لضمان ثبات الغطاء الخرساني.")
+    elif "Footing" in element_type:
+        st.write("- يتم صب طبقة نظافة بسماكة 10 سم قبل البدء بالتسليح.")
 
-# --- المذكرة الحسابية ---
-st.divider()
-st.subheader("📝 المذكرة الحسابية الكاملة")
-with st.expander("اضغط لعرض المذكرة الجاهزة للطباعة"):
-    st.write(f"**المشروع:** تصميم إنشائي آلي")
-    st.write(f"**إعداد المهندس:** بيلان عبدالكريم")
-    st.write(f"**تاريخ الإصدار:** 2026-02-15")
-    st.write("---")
-    st.latex(r"W_u = 1.4 \cdot DL + 1.6 \cdot LL")
-    st.latex(r"M_u = \frac{W_u \cdot L^2}{8}")
-    st.latex(r"A_s = \frac{M_u}{0.87 \cdot f_y \cdot d}")
-    st.write(f"بناءً على الحسابات، يتم استخدام **{n_bars}** قضبان بقطر **{phi}** مم.")
+with col_img:
+    st.subheader("🎨 مخططات الفرش والتسليح")
+    if "Solid" in element_type:
+        
+    elif "Ribbed" in element_type:
+        
+    elif "Footing" in element_type:
+        
+    elif "Column" in element_type:
+        
 
-
-
+# --- رسم توضيحي للمقطع ---
+fig, ax = plt.subplots(figsize=(6, 4))
+if "Footing" in element_type:
+    ax.add_patch(patches.Rectangle((0.5, 0.5), 2, 0.5, facecolor='gray', edgecolor='black'))
+    ax.add_patch(patches.Rectangle((1.25, 1.0), 0.5, 1.5, facecolor='darkgray', edgecolor='black'))
+    ax.set_title("مقطع جانبي في الأساس والرقبة")
+else:
+    ax.add_patch(patches.Rectangle((0.1, 0.1), 0.8, 0.2, facecolor='lightgrey', edgecolor='black'))
+    ax.set_title(f"مقطع عرضي في {element_type}")
+ax.axis('off')
+st.pyplot(fig)
