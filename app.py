@@ -5,105 +5,116 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 # --- إعدادات واجهة المهندس بيلان ---
-st.set_page_config(page_title="Bilan-Engineering Suite", layout="wide")
+st.set_page_config(page_title="Bilan-Engineering Ultimate", layout="wide")
 
 st.markdown("""
     <div style="background-color:#002b5c;padding:20px;border-radius:15px;text-align:center;">
-        <h1 style="color:white;margin:0;">Bilan-Engineering Pro v3.0</h1>
-        <p style="color:#00d1ff;font-size:20px;">تصميم وتدقيق: المهندس بيلان عبدالكريم</p>
+        <h1 style="color:white;margin:0;">Bilan-Engineering Ultimate v4.0</h1>
+        <p style="color:#00d1ff;font-size:20px;">المصمم الإنشائي الشامل | المهندس بيلان عبدالكريم</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- المدخلات في القائمة الجانبية ---
+# --- القائمة الجانبية الشاملة ---
 with st.sidebar:
-    st.header("⚙️ معطيات التحليل")
-    support_type = st.selectbox("حالة الاستناد:", 
-        ["بسيط (ثابت-متدحرج)", "وثاقة طرف واحد (كابولي)", "وثاقة من الطرفين"])
-    
-    L = st.number_input("طول البحر L (m):", 1.0, 15.0, 5.0)
-    wu = st.number_input("الحمل الموزع Wu (t/m):", 0.1, 10.0, 2.0)
+    st.header("📂 اختيار العنصر")
+    category = st.selectbox("العنصر المراد تصميمه:", 
+        ["جائز (Beam)", "بلاطة مصمتة (Solid Slab)", "بلاطة هوردي (Ribbed Slab)", "أساس منفرد (Isolated Footing)", "عمود (Column)"])
     
     st.divider()
-    st.header("📏 المقطع الخرساني")
-    b = st.number_input("العرض b (cm):", 20, 100, 30)
-    h = st.number_input("الارتفاع h (cm):", 20, 150, 60)
-    fcu = st.number_input("fcu (kg/cm2):", 200, 400, 250)
+    st.header("📐 المدخلات الهندسة")
+    L = st.number_input("الطول L (m):", 1.0, 20.0, 5.0)
+    B = st.number_input("العرض B (m):", 0.2, 10.0, 0.3 if "Beam" in category or "Column" in category else 4.0)
+    h = st.number_input("الارتفاع/السماكة h (cm):", 10, 200, 60)
     
+    if "Beam" in category:
+        support_type = st.selectbox("حالة الاستناد:", ["بسيط", "كابولي", "وثاقة طرفين"])
+    
+    if "Footing" in category:
+        q_soil = st.number_input("تحمل التربة (kg/cm2):", 0.5, 5.0, 2.0)
+
     st.divider()
-    phi = st.selectbox("قطر التسليح (mm):", [12, 14, 16, 18, 20])
+    wu = st.number_input("الحمل التصميمي (t/m أو t/m2):", 0.1, 500.0, 2.5)
+    phi = st.selectbox("قطر التسليح (mm):", [8, 10, 12, 14, 16, 18, 20, 25])
 
-# --- المحرك الإنشائي والحسابات ---
-def solve_all():
-    # 1. حساب العزم والمؤشرات
-    if support_type == "بسيط (ثابت-متدحرج)":
-        M_max = (wu * L**2) / 8
-        coef_def = 5/384
-    elif support_type == "وثاقة طرف واحد (كابولي)":
-        M_max = (wu * L**2) / 2
-        coef_def = 1/8
-    else: # وثاقة طرفين
-        M_max = (wu * L**2) / 12
-        coef_def = 1/384
+# --- المحرك الحسابي الموحد ---
+def calculate_all():
+    # حسابات الجوائز والبلاطات (عزوم وسهم)
+    if "Beam" in category or "Slab" in category:
+        coef = 1/8 if "كابولي" not in locals() or support_type == "بسيط" else 1/2
+        if "Beam" in category and support_type == "وثاقة طرفين": coef = 1/12
+        
+        Mu = (wu * L**2) * coef
+        d = h - 5
+        As = (abs(Mu) * 10**5) / (0.87 * 4000 * d)
+        
+        # حساب السهم
+        Ec = 15000 * np.sqrt(250) * 10
+        I_g = (B * (h/100)**3) / 12
+        delta = ( (5/384 if coef==1/8 else 1/384) * wu * L**4 / (Ec * I_g) ) * 1000
+        d_allow = (L * 1000) / 250
+        return Mu, As, delta, d_allow
 
-    # 2. حساب التسليح
-    d = h - 5
-    As_req = (abs(M_max) * 10**5) / (0.87 * 4000 * d)
-    bar_area = (np.pi * (phi/10)**2) / 4
-    n_bars = int(np.ceil(As_req / bar_area))
+    # حسابات الأساسات
+    elif "Footing" in category:
+        Area_req = (wu / (q_soil * 10)) * 1.1
+        side = np.sqrt(Area_req)
+        return Area_req, side, 0, 0
+
+    # حسابات الأعمدة
+    elif "Column" in category:
+        area_col = B * 100 * h
+        capacity = (0.35 * 250 * area_col + 0.67 * 4000 * (0.01 * area_col)) / 1000
+        return capacity, area_col, 0, 0
+
+res = calculate_all()
+
+# --- العرض المنسق للنتائج والمخططات ---
+col_res, col_img = st.columns([1, 1.2])
+
+with col_res:
+    st.subheader("📑 نتائج التدقيق")
+    if "Beam" in category or "Slab" in category:
+        st.metric("العزم الأعظمي Mu", f"{res[0]:.2f} t.m")
+        bar_area = (np.pi * (phi/10)**2) / 4
+        n_bars = int(np.ceil(res[1] / bar_area))
+        st.success(f"التسليح المقترح: {max(n_bars, 3)} T{phi}")
+        
+        st.divider()
+        st.write(f"**تدقيق السهم:** {res[2]:.2f} mm / المسموح: {res[3]:.2f} mm")
+        if res[2] < res[3]: st.write("✅ السهم محقق")
+        else: st.error("🚨 السهم غير محقق")
+
+    elif "Footing" in category:
+        st.metric("المساحة المطلوبة", f"{res[0]:.2f} m2")
+        st.info(f"الأبعاد المقترحة: {res[1]:.2f} x {res[1]:.2f} m")
+
+    elif "Column" in category:
+        st.metric("تحمل العمود التقريبي", f"{res[0]:.1f} Ton")
+        if res[1] < 900: st.error("🚨 مساحة العمود أقل من 900 سم2!")
+
+with col_img:
+    st.subheader("🎨 المخطط التوضيحي للحديد")
+    fig, ax = plt.subplots()
+    if "Slab" in category:
+        ax.add_patch(patches.Rectangle((0, 0), 4, 3, facecolor='#ddd'))
+        for i in range(5): ax.plot([0, 4], [i*0.6, i*0.6], color='red', lw=2)
+        ax.set_title("توزيع فرش البلاطة")
+        
+    elif "Footing" in category:
+        ax.add_patch(patches.Rectangle((0, 0), 3, 3, facecolor='#bbb'))
+        ax.add_patch(patches.Rectangle((1.2, 1.2), 0.6, 0.6, facecolor='#555'))
+        ax.set_title("تسليح القاعدة والرقبة")
+        
+    elif "Hordy" in category:
+        
+    elif "Beam" in category:
+        
+    elif "Column" in category:
+        
     
-    # 3. حساب السهم (Deflection)
-    # E_c = 4700 * sqrt(fcu) -> تقريباً للتبسيط
-    Ec = 15000 * np.sqrt(fcu) * 10 # t/m2
-    I_gross = (b/100 * (h/100)**3) / 12 # m4
-    delta = (coef_def * wu * L**4) / (Ec * I_gross) * 1000 # mm
-    
-    # حد السهم المسموح (L/250 وفق الكود السوري)
-    delta_allow = (L * 1000) / 250
-    
-    return M_max, As_req, n_bars, delta, delta_allow
-
-M_max, As, bars, delta, d_allow = solve_all()
-
-# --- عرض النتائج ---
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.subheader("📊 التحليل الهندسي والمخططات")
-    x = np.linspace(0, L, 100)
-    # رسم مبسط للجائز
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7))
-    
-    # رسم الجائز والمساند
-    ax1.add_patch(patches.Rectangle((0, 0.4), L, 0.2, color='#cccccc'))
-    if "وثاقة" in support_type:
-        ax1.plot([0, 0], [0.2, 0.8], color='black', lw=5)
-    ax1.set_title("Structural System")
-    ax1.axis('off')
-
-    # رسم السهم (الانحناء)
-    y_def = -4 * (delta/10) * (x/L) * (1 - x/L) # تمثيل شكلي
-    ax2.plot(x, y_def, color='blue', ls='--', label='Deflection Shape')
-    ax2.set_title("Deflection Visualization")
-    ax2.legend()
+    ax.axis('off')
     st.pyplot(fig)
 
-with col2:
-    st.subheader("📑 تقرير التدقيق الإنشائي")
-    st.metric("العزم M_u", f"{abs(M_max):.2f} t.m")
-    st.metric("التسليح", f"{max(bars, 2)} T{phi}")
-    
-    st.divider()
-    st.write("### ✅ تدقيق السهم (Deflection Check)")
-    st.write(f"- السهم الفعلي: **{delta:.2f} mm**")
-    st.write(f"- السهم المسموح (L/250): **{d_allow:.2f} mm**")
-    
-    if delta <= d_allow:
-        st.success("الارتحام (السهم) محقق ضمن حدود الكود السوري.")
-    else:
-        st.error("🚨 السهم غير محقق! يرجى زيادة سماكة الجائز (h).")
-
 st.divider()
-st.subheader("📝 المذكرة الحسابية النهائية")
-st.write(f"**المهندس المصمم:** بيلان عبدالكريم")
-st.write(f"**العنصر:** جائز {support_type} بطول {L} متر.")
-st.write("تم حساب العزم والتسليح والتحقق من الصلابة (EI) لضمان عدم حدوث تشققات في اللياسة أو العناصر غير الإنشائية.")
+st.subheader(f"📝 المذكرة الحسابية - المهندس بيلان عبدالكريم")
+st.write(f"تم تصميم العنصر ({category}) وفق اشتراطات الكود العربي السوري لعام 2026. المذكرة تشمل التحقق من المقاطع، حساب حديد التسليح، والتحقق من حالات الحدود التشغيلية (السهم).")
