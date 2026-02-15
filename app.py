@@ -1,69 +1,55 @@
 import streamlit as st
-import numpy as np
-import ezdxf
-import io
-from datetime import datetime
 
-# 1. إعدادات الهوية (بيلان مصطفى عبد الكريم - 0998449697)
-ST_NAME, ST_TEL = "بيلان مصطفى عبد الكريم", "0998449697"
+# 1. تعريف البيانات الأساسية
+ST_NAME = "بيلان مصطفى عبد الكريم"
+ST_TEL = "0998449697"
 ST_WORK = "المهندس المدني - دراسة - إشراف - تعهدات"
 
-st.set_page_config(page_title="Pelan Office v94", layout="wide")
+# 2. إعدادات الصفحة والواجهة
+st.set_page_config(page_title="Pelan Office v95", layout="wide")
 st.markdown(f"""
 <style>
- .stApp {{ background-color: #0b1619; color: white; }}
- .report-box {{ background: white; color: black; padding: 20px; border-radius: 10px; direction: rtl; border-right: 12px solid #d4af37; }}
- .cad-dark {{ background: #111; border: 2px solid #444; padding: 15px; border-radius: 8px; color: #50c878; text-align: center; }}
- .stamp-v94 {{ border: 4px double #d4af37; padding: 10px; width: 280px; text-align: center; background: #fff; color: #000; float: left; margin-top: 20px; }}
+    .stApp {{ background-color: #0b1619; color: white; }}
+    .report-box {{ background: white; color: black; padding: 25px; border-radius: 10px; direction: rtl; border-right: 12px solid #d4af37; }}
+    .cad-box {{ background: #111; border: 2px solid #444; padding: 20px; border-radius: 10px; color: #50c878; text-align: center; }}
+    .stamp {{ border: 4px double #d4af37; padding: 15px; width: 300px; text-align: center; background: #fff; color: #000; float: left; margin-top: 25px; }}
 </style>
 """, unsafe_allow_html=True)
 
-# 2. لوحة التحكم (Sidebar)
+# 3. القائمة الجانبية (المدخلات)
 with st.sidebar:
     st.header("⚙️ خيارات التصميم")
     mode = st.selectbox("نوع العنصر:", ["جائز (Beam)", "بلاطة (Slab)", "أساس (Footing)", "عمود (Column)", "خزان (Tank)"])
     B = st.number_input("العرض B (cm):", 20, 500, 30)
     H = st.number_input("الارتفاع H (cm):", 10, 500, 60)
-    L = st.number_input("الطول L (m):", 1.0, 50.0, 5.0)
     st.divider()
     n_bot = st.number_input("عدد قضبان السفلي:", 2, 20, 4)
     phi_bot = st.selectbox("قطر السفلي (mm):", [12, 14, 16, 18, 20, 25], index=2)
-    n_top = st.number_input("عدد قضبان العلوي:", 2, 20, 2)
+    n_top = st.number_input("عدد قضبان العلوي/تعليق:", 2, 20, 2)
     phi_top = st.selectbox("قطر العلوي (mm):", [10, 12, 14, 16], index=1)
     phi_stir = st.selectbox("قطر الكانة (mm):", [8, 10, 12])
 
-# 3. محرك الرسم (AutoCAD Engine)
-def build_dxf(m, b, h, nb, pb, nt, pt, ps):
-    d = ezdxf.new(setup=True); msp = d.modelspace()
-    w, hi, c = b*10, h*10, 30
-    msp.add_lwpolyline([(0,0),(w,0),(w,hi),(0,hi),(0,0)], dxfattribs={'color': 7})
-    msp.add_lwpolyline([(c,c),(w-c,c),(w-c,hi-c),(c,hi-c),(c,c)], dxfattribs={'color': 3})
-    for i in range(nb):
-        msp.add_circle((c+10+i*(w-2*c-20)/(nb-1 if nb>1 else 1), c+10), radius=pb/2, dxfattribs={'color': 5})
-    for i in range(nt):
-        msp.add_circle((c+10+i*(w-2*c-20)/(nt-1 if nt>1 else 1), hi-c-10), radius=pt/2, dxfattribs={'color': 5})
-    msp.add_text(f"{nb}T{pb} Bottom", dxfattribs={'height': 15}).set_placement((w+20, 20))
-    msp.add_text(f"{nt}T{pt} Top", dxfattribs={'height': 15}).set_placement((w+20, hi-20))
-    msp.add_text(f"ENG. {ST_NAME} - {ST_TEL}", dxfattribs={'height': 20}).set_placement((0, hi+50))
-    return d
+# 4. عرض النتائج والمذكرة
+st.markdown(f"<h1 style='text-align:center; color:#d4af37;'>🏢 Pelan Professional Office - v95</h1>", unsafe_allow_html=True)
 
-# 4. واجهة العرض (Frontend)
-st.markdown(f"<h1 style='text-align:center;'>🏢 Pelan Office v94 - {mode}</h1>", unsafe_allow_html=True)
+col1, col2 = st.columns([1, 1.2])
 
-c1, c2 = st.columns([1, 1.2])
-
-with c1:
+with col1:
     st.markdown("<div class='report-box'>", unsafe_allow_html=True)
-    st.subheader("📑 المذكرة الحسابية")
-    st.write(f"**العنصر:** {mode} | **الأبعاد:** {B}x{H} cm")
-    st.write(f"**تسليح السفلي (الفرش):** {n_bot} T {phi_bot}")
-    st.write(f"**تسليح العلوي (التعليق):** {n_top} T {phi_top}")
-    st.write(f"**الكانات:** Φ {phi_stir} @ 15cm")
+    st.subheader("📑 المذكرة الحسابية والفرش")
+    st.write(f"**نوع العنصر الإنشائي:** {mode}")
+    st.write(f"**الأبعاد المعتمدة:** {B}x{H} cm")
+    st.divider()
+    st.write(f"✅ **التسليح السفلي (الرئيسي):** {n_bot} T {phi_bot}")
+    st.write(f"✅ **التسليح العلوي (التعليق):** {n_top} T {phi_top}")
+    st.write(f"✅ **الكانات:** Φ {phi_stir} @ 15cm")
     st.markdown("</div>", unsafe_allow_html=True)
 
-with c2:
-    st.markdown("<div class='cad-dark'>", unsafe_allow_html=True)
+with col2:
+    st.markdown("<div class='cad-box'>", unsafe_allow_html=True)
     st.subheader("🖋️ مخطط تفريد الحديد")
+    
+    # تبديل الصور بناءً على الاختيار
     if "جائز" in mode:
         
     elif "أساس" in mode:
@@ -74,15 +60,22 @@ with c2:
         
     else:
         
+    
+    st.markdown(f"**توصيف أوتوكاد:** {n_bot}T{phi_bot} + {n_top}T{phi_top}")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown(f"""<div class='stamp-v94'><p><b>المهندس المدني</b></p><p style='color:#d4af37; font-size:18px; font-weight:bold;'>{ST_NAME}</p>
-    <p style='font-size:12px;'>{ST_WORK}</p><p style='font-weight:bold;'>TEL: {ST_TEL}</p>
-    <hr style='border:1px solid #d4af37;'><p style='font-size:10px;'>ختم الاعتماد الرسمي</p></div>""", unsafe_allow_html=True)
+    # الختم الرسمي مع الرقم
+    st.markdown(f"""
+    <div class='stamp'>
+        <p style='margin:0; font-weight:bold;'>المهندس المدني</p>
+        <p style='color:#d4af37; font-size:20px; font-weight:bold; margin:5px 0;'>{ST_NAME}</p>
+        <p style='margin:0; font-size:13px;'>{ST_WORK}</p>
+        <p style='margin:5px 0; font-weight:bold; color:#1a1a1a;'>TEL: {ST_TEL}</p>
+        <hr style='border:1px solid #d4af37; margin:8px;'>
+        <p style='font-size:10px;'>ختم الاعتماد الهندسي v95</p>
+    </div>
+    <div style='clear:both;'></div>
+    """, unsafe_allow_html=True)
 
-# 5. التصدير (AutoCAD)
 st.divider()
-if st.button("🚀 تصدير مخطط أوتوكاد التفصيلي"):
-    dxf = build_dxf(mode, B, H, n_bot, phi_bot, n_top, phi_top, phi_stir)
-    buf = io.StringIO(); dxf.write(buf)
-    st.download_button("📥 تحميل ملف DXF", buf.getvalue(), f"Pelan_{mode}.dxf")
+st.info("ملاحظة: هذه النسخة مصممة للعمل على الجوال بدون أخطاء مسافات.")
