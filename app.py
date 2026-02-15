@@ -4,103 +4,88 @@ import matplotlib.pyplot as plt
 import ezdxf
 import io
 
-# 1. إعدادات الهوية
-ST_NAME, ST_JOB = "بيلان مصطفى عبد الكريم", "المهندس المدني"
+# بيانات الختم الثابتة
+ST_NAME = "بيلان مصطفى عبد الكريم"
+ST_JOB = "المهندس المدني (دراسة - إشراف - تعهدات)"
+ST_TEL = "0998449697"
 
-st.set_page_config(page_title="Pelan Giant v85", layout="wide")
-st.markdown("""
+st.set_page_config(page_title="Pelan Pro v89", layout="wide")
+
+# تصميم الواجهة الاحترافي
+st.markdown(f"""
 <style>
-    .stApp { background-color: #0b1619; color: white; }
-    .main-panel { background: white; color: black; padding: 25px; border-radius: 10px; direction: rtl; border-right: 12px solid #d4af37; }
-    .cad-box { background: #1a1c23; border: 2px solid #333; padding: 15px; border-radius: 10px; color: #50c878; margin: 15px 0; }
-    .stamp { border: 4px double #d4af37; padding: 10px; width: 280px; text-align: center; background: white; color: black; float: left; }
+ .stApp {{ background-color: #0b1619; color: white; }}
+ .report-card {{ background: white; color: black; padding: 20px; border-radius: 10px; direction: rtl; border-right: 10px solid #d4af37; }}
+ .cad-dark {{ background: #151515; border: 2px solid #333; padding: 15px; border-radius: 8px; color: #50c878; text-align: center; }}
+ .official-stamp {{ border: 3px double #d4af37; padding: 10px; width: 280px; text-align: center; background: #fff; color: #000; float: left; margin-top: 20px; }}
 </style>
 """, unsafe_allow_html=True)
 
-# 2. المدخلات (Sidebar)
+# القائمة الجانبية
 with st.sidebar:
-    st.header("🏗️ مدخلات التصميم التفصيلية")
-    B = st.number_input("العرض B (cm):", 20, 100, 30)
-    H = st.number_input("الارتفاع H (cm):", 20, 200, 60)
-    L = st.number_input("البحر L (m):", 1.0, 20.0, 5.0)
-    W = st.number_input("الحمل الموزع W (kN/m):", 1.0, 500.0, 30.0)
-    phi_main = st.selectbox("قطر الحديد السفلي:", [12, 14, 16, 18, 20, 25])
-    phi_top = st.selectbox("قطر الحديد العلوي (تعليق):", [10, 12, 14, 16])
-    phi_stir = st.selectbox("قطر الكانات:", [8, 10, 12])
+    st.header("⚙️ مدخلات التصميم")
+    element = st.selectbox("نوع العنصر:", ["جائز مستطيل", "أساس منفرد", "عمود"])
+    B_cm = st.number_input("العرض B (cm):", 20, 100, 30)
+    H_cm = st.number_input("الارتفاع H (cm):", 20, 200, 60)
+    L_m = st.number_input("الطول L (m):", 1, 20, 5)
+    Load = st.number_input("الحمل (kN/m):", 1, 500, 30)
+    phi_m = st.selectbox("القطر الرئيسي:", [14, 16, 18, 20, 25], index=1)
 
-# 3. المحرك الإنشائي (Calculations)
-M_max = (W * L**2) / 8
-V_max = (W * L) / 2
-d = H - 5 # الغطاء الخرساني
+# الحسابات الإنشائية
+M_max = (Load * L_m**2) / 8
+n_bars = max(3, int(np.ceil((M_max * 1e6) / (0.87 * 420 * (H_cm-5) * 10) / (np.pi * phi_m**2 / 4))))
 
-# حساب الحديد السفلي (Main Steel)
-As_main = (M_max * 1e6) / (0.87 * 420 * d * 10)
-n_main = max(2, int(np.ceil(As_main / (np.pi * phi_main**2 / 4))))
+# العرض الرئيسي
+st.markdown(f"<h1 style='text-align:center; color:#d4af37;'>🏗️ مكتب المهندس بيلان - نظام التصميم v89</h1>", unsafe_allow_html=True)
 
-# حساب الحديد العلوي (Top/Stirrup Hangers)
-n_top = 2 # كحد أدنى لتعليق الكانات
-
-# حساب الكانات (Shear)
-s_spacing = 15 # تقسيط افتراضي 15 سم
-
-# 4. واجهة العرض (The Master Layout)
-st.markdown(f"<h1 style='text-align:center; color:#d4af37;'>🏗️ Pelan Structural Giant - Analysis & Design</h1>", unsafe_allow_html=True)
-
-col1, col2 = st.columns([1, 1.2])
+col1, col2 = st.columns([1, 1.3])
 
 with col1:
-    st.markdown("<div class='main-panel'>", unsafe_allow_html=True)
-    st.subheader("📝 المذكرة الحسابية التفصيلية")
-    st.write(f"**أقصى عزم (M max):** {M_max:.2f} kNm")
-    st.write(f"**أقصى قص (V max):** {V_max:.2f} kN")
+    st.markdown("<div class='report-card'>", unsafe_allow_html=True)
+    st.subheader("📑 المذكرة الحسابية")
+    st.write(f"**العنصر:** {element}")
+    st.write(f"**العزم الأقصى:** {M_max:.1f} kNm")
+    st.write(f"**الحديد المطلوب:** {n_bars} T {phi_m}")
     st.divider()
-    st.write(f"✅ **التسليح السفلي:** {n_main} T {phi_main}")
-    st.write(f"✅ **التسليح العلوي:** {n_top} T {phi_top}")
-    st.write(f"✅ **الكانات:** Φ {phi_stir} @ {s_spacing} cm")
-    
-    # رسم مخطط العزم والقص
-    st.subheader("📈 مخططات القوى (Moment & Shear)")
-    x = np.linspace(0, L, 100)
-    shear = W * (L/2 - x)
-    moment = (W*x/2) * (L - x)
-    
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 6))
-    ax1.fill_between(x, shear, color='skyblue', alpha=0.4)
-    ax1.set_title("Shear Force Diagram (SFD)")
-    ax2.fill_between(x, moment, color='orange', alpha=0.4)
-    ax2.set_title("Bending Moment Diagram (BMD)")
-    plt.tight_layout()
+    # رسم مخطط العزم (BMD)
+    fig, ax = plt.subplots(figsize=(4, 2))
+    x = np.linspace(0, L_m, 50)
+    m_plot = (Load*x/2)*(L_m-x)
+    ax.fill_between(x, m_plot, color='orange', alpha=0.3)
+    ax.set_title("Moment Diagram (BMD)", fontsize=8)
     st.pyplot(fig)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
-    st.markdown("<div class='cad-box'>", unsafe_allow_html=True)
-    st.subheader("🖋️ المخطط التفصيلي للحديد (Detailing)")
-    st.write(f"مقطع عرضي في الجائز B={B}cm, H={H}cm")
+    st.markdown("<div class='cad-dark'>", unsafe_allow_html=True)
+    st.subheader("🖋️ مخطط الفرش وتفريد الحديد (CAD)")
     
-    # رسم المقطع العرضي للحديد
-    
-    
-    st.write(f"**تفصيل الفرش:** يتم توزيع {n_main} قضبان في طبقة واحدة مع غطاء 3سم.")
-    st.write(f"**التعليق:** قضبان علوية عدد {n_top} لربط الكانات.")
+    # استدعاء المخططات التوضيحية
+    if "جائز" in element:
+            elif "أساس" in element:
+            else:
+                
+    st.write(f"تفريد الحديد: {n_bars} قضبان سفلية (الفرش) مع توصيف كامل.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # الختم الهندسي
+    # الختم الرسمي مع الرقم
     st.markdown(f"""
-    <div class='stamp'>
-        <p style='margin:0;'><b>{ST_JOB}</b></p>
-        <p style='color:#d4af37; font-size:18px; font-weight:bold; margin:5px 0;'>{ST_NAME}</p>
-        <p style='margin:0; font-size:12px;'>دراسة - إشراف - تعهدات</p>
-        <hr style='border:1px solid #d4af37;'>
-        <p style='font-size:10px;'>ختم الاعتماد المهني 2026</p>
+    <div class='official-stamp'>
+        <p style='margin:0; font-weight:bold;'>{ST_NAME}</p>
+        <p style='margin:0; font-size:12px;'>{ST_JOB}</p>
+        <p style='margin:5px 0; font-weight:bold; color:#d4af37;'>TEL: {ST_TEL}</p>
+        <hr style='border:1px solid #d4af37; margin:5px;'>
+        <p style='font-size:9px;'>دراسة - إشراف - تعهدات هندسية</p>
     </div>
     <div style='clear:both;'></div>
     """, unsafe_allow_html=True)
 
-# أزرار التصدير
+# تصدير AutoCAD
 st.divider()
-if st.button("🚀 تصدير المخطط الكامل إلى AutoCAD"):
+if st.button("🚀 تصدير المخطط الإنشائي الكامل (DXF)"):
     doc = ezdxf.new(setup=True); msp = doc.modelspace()
-    msp.add_text(f"BEAM DESIGN - ENG. PELAN", dxfattribs={'height': 5})
+    msp.add_lwpolyline([(0,0), (B_cm*10,0), (B_cm*10,H_cm*10), (0,H_cm*10), (0,0)])
+    msp.add_text(f"ENG. PELAN - {n_bars}T{phi_m}", dxfattribs={'height': 15}).set_placement((0, -30))
+    msp.add_text(f"TEL: {ST_TEL}", dxfattribs={'height': 12}).set_placement((0, -50))
     buf = io.StringIO(); doc.write(buf)
-    st.download_button("📥 تحميل ملف DXF", buf.getvalue(), "Structural_Pelan.dxf")
+    st.download_button("📥 تحميل المخطط الآن", buf.getvalue(), "Pelan_Office_v89.dxf")
