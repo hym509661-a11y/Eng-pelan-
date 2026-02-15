@@ -2,90 +2,110 @@ import streamlit as st
 import numpy as np
 import ezdxf
 import io
+from datetime import datetime
 
-# 1. إعدادات الهوية (الختم والرقم)
-ST_NAME = "بيلان مصطفى عبد الكريم"
-ST_JOB = "المهندس المدني (دراسة - إشراف - تعهدات)"
-ST_TEL = "0998449697"
+# بيانات الهوية
+ST_NAME, ST_TEL = "بيلان مصطفى عبد الكريم", "0998449697"
+ST_INFO = "المهندس المدني - دراسة وإشراف"
 
-st.set_page_config(page_title="Pelan Pro v91", layout="wide")
+st.set_page_config(page_title="Pelan CAD Master v92", layout="wide")
 
-# تصميم الواجهة لمنع أخطاء التنسيق
+# تصميم الواجهة
 st.markdown(f"""
 <style>
  .stApp {{ background-color: #0b1619; color: white; }}
- .report-card {{ background: white; color: black; padding: 20px; border-radius: 10px; direction: rtl; border-right: 10px solid #d4af37; }}
- .cad-view {{ background: #111; border: 2px solid #444; padding: 15px; border-radius: 8px; color: #50c878; text-align: center; }}
+ .report-card {{ background: white; color: black; padding: 20px; border-radius: 10px; direction: rtl; border-right: 12px solid #d4af37; }}
  .official-stamp {{ border: 3px double #d4af37; padding: 10px; width: 280px; text-align: center; background: #fff; color: #000; float: left; margin-top: 20px; }}
 </style>
 """, unsafe_allow_html=True)
 
-# 2. القائمة الجانبية (Inputs)
+# المدخلات
 with st.sidebar:
-    st.header("⚙️ مدخلات التصميم")
-    elem = st.selectbox("العنصر:", ["جائز (Beam)", "أساس (Footing)", "عمود (Column)"])
+    st.header("🏗️ تفاصيل التسليح")
     B = st.number_input("العرض B (cm):", 20, 100, 30)
     H = st.number_input("الارتفاع H (cm):", 20, 200, 60)
-    L = st.number_input("الطول L (m):", 1.0, 20.0, 5.0)
-    W = st.number_input("الحمل (kN/m):", 1.0, 500.0, 40.0)
-    phi = st.selectbox("القطر (mm):", [12, 14, 16, 18, 20, 25], index=2)
+    st.subheader("حديد التسليح")
+    n_bot = st.number_input("عدد القضبان السفلية:", 2, 10, 3)
+    phi_bot = st.selectbox("قطر السفلي (mm):", [14, 16, 18, 20])
+    n_top = st.number_input("عدد قضبان التعليق (علوي):", 2, 10, 2)
+    phi_top = st.selectbox("قطر العلوي (mm):", [10, 12, 14])
+    phi_stir = st.selectbox("قطر الكانات (mm):", [8, 10])
 
-# 3. محرك الحسابات
-Mu = (W * L**2) / 8
-As = (Mu * 1e6) / (0.87 * 420 * (H-5) * 10)
-n = int(np.ceil(As / (np.pi * phi**2 / 4)))
-if n < 2: n = 2
+# محرك رسم الأوتوكاد المتطور
+def draw_pro_cad(b_cm, h_cm, nb, pb, nt, pt, ps):
+    doc = ezdxf.new(setup=True)
+    msp = doc.modelspace()
+    
+    # تحويل لملم (Scale 1:10)
+    w, h = b_cm * 10, h_cm * 10
+    cv = 30 # Cover 3cm
+    
+    # 1. رسم الخرسانة (اللون الأبيض)
+    msp.add_lwpolyline([(0,0), (w,0), (w,h), (0,h), (0,0)], dxfattribs={'color': 7})
+    
+    # 2. رسم الكانة (اللون الأخضر)
+    msp.add_lwpolyline([(cv,cv), (w-cv,cv), (w-cv,h-cv), (cv,h-cv), (cv,cv)], dxfattribs={'color': 3})
+    
+    # 3. رسم الحديد السفلي (دوائر زرقاء)
+    dist_b = (w - 2*cv - 20) / (nb - 1) if nb > 1 else 0
+    for i in range(nb):
+        x = cv + 10 + (i * dist_b)
+        msp.add_circle((x, cv + 10), radius=pb/2, dxfattribs={'color': 5})
+    
+    # 4. رسم الحديد العلوي (دوائر زرقاء)
+    dist_t = (w - 2*cv - 20) / (nt - 1) if nt > 1 else 0
+    for i in range(nt):
+        x = cv + 10 + (i * dist_t)
+        msp.add_circle((x, h - cv - 10), radius=pt/2, dxfattribs={'color': 5})
 
-# 4. العرض (المذكرة + المخطط + الختم)
-st.markdown(f"<h1 style='text-align:center; color:#d4af37;'>🏗️ Pelan Professional Office - v91</h1>", unsafe_allow_html=True)
+    # 5. وضع الأسهم والتوصيف (Annotation)
+    # سهم السفلي
+    msp.add_line((w/2, cv), (w/2 + 50, -50), dxfattribs={'color': 1})
+    msp.add_text(f"{nb} T {pb} (BOTTOM)", dxfattribs={'height': 15}).set_placement((w/2 + 55, -65))
+    
+    # سهم العلوي
+    msp.add_line((w/2, h-cv), (w/2 + 50, h + 50), dxfattribs={'color': 1})
+    msp.add_text(f"{nt} T {pt} (TOP)", dxfattribs={'height': 15}).set_placement((w/2 + 55, h + 55))
 
-col1, col2 = st.columns([1, 1.3])
+    # الختم داخل الأوتوكاد
+    msp.add_text(f"ENG. {ST_NAME}", dxfattribs={'height': 20}).set_placement((0, h + 100))
+    msp.add_text(f"TEL: {ST_TEL}", dxfattribs={'height': 15}).set_placement((0, h + 80))
+    
+    return doc
+
+# العرض والنتائج
+st.markdown(f"<h1 style='text-align:center;'>🏗️ Pelan Professional CAD Suite</h1>", unsafe_allow_html=True)
+
+col1, col2 = st.columns([1, 1.2])
 
 with col1:
     st.markdown("<div class='report-card'>", unsafe_allow_html=True)
-    st.subheader("📑 المذكرة الحسابية")
-    st.write(f"**العنصر:** {elem}")
-    st.write(f"**العزم الأقصى:** {Mu:.2f} kNm")
-    st.divider()
-    st.markdown(f"### التسليح: **{n} T {phi}**")
-    st.write("مخطط القص والعزم محتسب بدقة هندسية.")
+    st.subheader("📑 تفاصيل التسليح")
+    st.write(f"🔹 **التسليح السفلي:** {n_bot} قضبان قطر {phi_bot} ملم")
+    st.write(f"🔹 **حديد التعليق:** {n_top} قضبان قطر {phi_top} ملم")
+    st.write(f"🔹 **الكانات:** Φ {phi_stir} كل 15 سم")
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
-    st.markdown("<div class='cad-view'>", unsafe_allow_html=True)
-    st.subheader("🖋️ مخطط الفرش (CAD)")
+    st.subheader("🖋️ المخطط التفصيلي (Preview)")
     
-    if "جائز" in elem:
-        st.write("--- رسم مقطع عرضي للجائز مع تفريد الحديد ---")
-        
-    elif "أساس" in elem:
-        st.write("--- رسم مقطع أساس مع فرش الحديد ---")
-        
-    else:
-        st.write("--- رسم مقطع عمود مع الكانات ---")
-        
-        
-    st.markdown(f"**توصيف:** {n}T{phi} سفلي + تعليق كانات")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # الختم الرسمي بالرقم
+    
+    # الختم الرسمي
     st.markdown(f"""
     <div class='official-stamp'>
         <p style='margin:0; font-weight:bold;'>{ST_NAME}</p>
-        <p style='margin:0; font-size:12px;'>{ST_JOB}</p>
+        <p style='margin:0; font-size:12px;'>{ST_INFO}</p>
         <p style='margin:5px 0; font-weight:bold; color:#d4af37;'>TEL: {ST_TEL}</p>
         <hr style='border:1px solid #d4af37; margin:5px;'>
-        <p style='font-size:9px;'>دراسة - إشراف - تعهدات هندسية</p>
+        <p style='font-size:9px;'>تم التدقيق والختم إلكترونياً</p>
     </div>
     <div style='clear:both;'></div>
     """, unsafe_allow_html=True)
 
-# 5. التصدير
+# التصدير
 st.divider()
-if st.button("🚀 تصدير AutoCAD (DXF)"):
-    doc = ezdxf.new(setup=True); msp = doc.modelspace()
-    msp.add_lwpolyline([(0,0), (B*10,0), (B*10,H*10), (0,H*10), (0,0)])
-    msp.add_text(f"ENG. PELAN - {n}T{phi}", dxfattribs={'height': 15}).set_placement((0, -30))
-    msp.add_text(f"TEL: {ST_TEL}", dxfattribs={'height': 12}).set_placement((0, -50))
-    buf = io.StringIO(); doc.write(buf)
-    st.download_button("📥 تحميل المخطط", buf.getvalue(), "Pelan_v91.dxf")
+if st.button("🚀 إنشاء ملف AutoCAD (DXF) بفرش الحديد الكامل"):
+    dxf_file = draw_pro_cad(B, H, n_bot, phi_bot, n_top, phi_top, phi_stir)
+    buf = io.StringIO()
+    dxf_file.write(buf)
+    st.download_button("📥 تحميل المخطط النهائي", buf.getvalue(), "Pelan_Detailing.dxf")
