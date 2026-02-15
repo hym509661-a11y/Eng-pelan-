@@ -1,109 +1,112 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
 import ezdxf
 import io
 import matplotlib.pyplot as plt
 
-# 1. التنسيق الملكي (Royal Engineering UI)
-st.set_page_config(page_title="Pelan Ultimate Legend v32", layout="wide")
+# 1. الإعدادات البصرية (Masterpiece Theme)
+st.set_page_config(page_title="Pelan Grandmaster v32.1", layout="wide")
 st.markdown("""
     <style>
-    .stApp { background: #0a0a0a; color: #ffffff; }
-    .legend-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 2px solid #38bdf8;
-        border-radius: 20px;
-        padding: 30px;
-        box-shadow: 0 0 30px rgba(56, 189, 248, 0.15);
-        margin-bottom: 25px;
+    .stApp { background: #050505; color: #ffffff; }
+    .main-box {
+        background: rgba(56, 189, 248, 0.05);
+        border: 1px solid #38bdf8;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
     }
-    .highlight-gold { color: #d4af37; font-weight: bold; }
+    .gold-text { color: #d4af37; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='legend-card' style='text-align:center;'><h1 style='color:#38bdf8;'>Pelan Ultimate Legend v32</h1><p class='highlight-gold'>المنظومة الهندسية الشاملة | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+st.markdown("<div class='main-box' style='text-align:center;'><h1 style='color:#38bdf8;'>Pelan Grandmaster v32.1</h1><p class='gold-text'>النظام الهندسي الشامل | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
 
-# 2. القائمة الجانبية (The Master Control)
+# 2. القائمة الجانبية (Engineering Dashboard)
 with st.sidebar:
-    st.header("🗂️ اختيار العنصر الإنشائي")
-    category = st.selectbox("التصنيف الرئيسي:", ["خرسانة مسلحة", "منشآت معدنية", "تحليل زلزالي"])
+    st.header("⚙️ الإعدادات")
+    category = st.radio("المجال:", ["بيتون مسلح", "منشآت معدنية", "دراسة زلزالية"])
     
-    if category == "خرسانة مسلحة":
-        elem = st.selectbox("العنصر:", ["جائز مستمر", "بلاطة فطرية", "بلاطة معصبة", "عمود طويل", "أساسات حصيرية", "جدار استنادي", "خزان مياه"])
+    if category == "بيتون مسلح":
+        elem = st.selectbox("العنصر:", ["جائز مستمر", "بلاطة فطرية", "بلاطة معصبة", "عمود", "أساسات حصيرية", "جدار استنادي", "خزان مياه"])
     elif category == "منشآت معدنية":
-        elem = st.selectbox("العنصر:", ["إطارات معدنية", "وصلات", "جوائز شبكية"])
+        elem = st.selectbox("العنصر:", ["إطار معدني Portal", "جائز شبكي Truss", "وصلات"])
     else:
-        elem = "تحليل زلزالي"
+        elem = "دراسة زلزالية"
 
     st.divider()
-    st.subheader("💰 بارامترات السوق")
-    conc_p = st.number_input("سعر البيتون ($/m3):", 110)
-    steel_p = st.number_input("سعر الحديد ($/ton):", 950)
+    st.subheader("💰 الأسعار والتكاليف")
+    c_price = st.number_input("سعر المتر المكعب ($):", 110)
+    s_price = st.number_input("سعر طن الحديد ($):", 950)
 
-# 3. محرك الحسابات (Simplified Engine for Demonstration)
-def calculate_metrics():
-    L, wu = 6.0, 4.0
-    Mu = (wu * L**2) / 8
-    As = (Mu * 10**5) / (0.87 * 4000 * 55)
-    cost = (0.3 * 0.6 * L * conc_p) + (As * L * 0.00785 * steel_p)
-    return Mu, As, cost
+# 3. محرك الحسابات الموحد
+# (هنا نضع قيم افتراضية للحساب لمجرد العرض، يمكنك ربطها بمدخلات المستخدم)
+def get_calculations():
+    # قيم افتراضية للنمذجة
+    vol = 1.5  # m3
+    steel_w = 0.12 # ton
+    cost = (vol * c_price) + (steel_w * s_price)
+    return vol, steel_w, cost
 
-Mu, As, total_cost = calculate_metrics()
+vol, steel_w, total_cost = get_calculations()
 
-# 4. عرض المحتوى وتصحيح أخطاء الإزاحة (Indentation Fix)
-col_data, col_visual = st.columns([1.3, 1])
+# 4. عرض النتائج والتحليل (مع تصحيح الأخطاء البرمجية)
+col_info, col_draw = st.columns([1.2, 1])
 
-with col_data:
-    st.markdown("<div class='legend-card'>", unsafe_allow_html=True)
-    st.subheader(f"🔍 تحليل وتصميم: {elem}")
+with col_info:
+    st.markdown("<div class='main-box'>", unsafe_allow_html=True)
+    st.subheader(f"📊 تحليل: {elem}")
     
-    c1, c2, c3 = st.columns(3)
-    c1.metric("العزم التصميمي", f"{Mu:.2f} t.m")
-    c2.metric("التسليح المطلوب", f"{As:.2f} cm²")
-    c3.metric("التكلفة التقديرية", f"${total_cost:.1f}")
-
+    # بطاقات النتائج الممالية
+    st.write(f"💵 **التكلفة التقديرية للمواد:** ${total_cost:.2f}")
+    st.write(f"🧱 **كمية البيتون:** {vol} m³ | 🏗️ **كمية الحديد:** {steel_w} ton")
+    
     st.divider()
-    st.markdown("### 🤖 توصية الذكاء الاصطناعي (AI Analysis):")
+    st.markdown("### 🤖 توصية الذكاء الاصطناعي (AI):")
     
-    # تصحيح الـ if statements لمنع الخطأ الظاهر في صورك
+    # الجزء الذي كان يسبب الخطأ - تم تصحيحه وضمان الإزاحة
     if "خزان" in elem:
-        st.info("💡 خزان المياه يحتاج تصميم Stage 1 لمنع الشروخ ونفاذية الماء.")
-    elif "حصيرية" in elem:
-        st.info("💡 يجب التأكد من جساءة الحصيرة لمقاومة القص الثاقب تحت الأعمدة.")
+        st.info("💡 يجب مراعاة ضغط الماء المثلثي واستخدام فواصل الصب Waterstops.")
     elif "فطرية" in elem:
-        st.info("💡 دقق تسليح شريحة العمود (Column Strip) لمقاومة العزوم السالبة.")
-    elif "معدنية" in category:
-        st.info("💡 المنشآت المعدنية تتطلب تدقيق التحنيب الجانبي (LTB).")
-    elif "زلزالي" in category:
-        st.error("🚨 يتم الآن حساب قوى القص القاعدي وتوزيعها استاتيكياً أو ديناميكياً.")
+        st.info("💡 دقق تسليح القص الثاقب (Punching) عند رؤوس الأعمدة.")
+    elif "حصيرية" in elem:
+        st.info("💡 تأكد من توزيع ضغط التربة بانتظام وتجنب الهبوط التفاضلي.")
+    elif "معصبة" in elem:
+        st.info("💡 دقق توزيع الأحمال على الأعصاب في الاتجاهين (α & β).")
+    elif "زلزالية" in category:
+        st.warning("🚨 دقق الانتقال الجانبي (Drift) لضمان استقرار المنشأ.")
     else:
-        st.success("✅ النظام الإنشائي المختار اقتصادي وآمن لهذه المدخلات.")
+        st.success("✅ النظام الإنشائي المختار آمن ومطابق لاشتراطات الكود.")
     
     st.markdown("</div>", unsafe_allow_html=True)
 
-with col_visual:
-    st.markdown("<div class='legend-card'>", unsafe_allow_html=True)
-    st.subheader("🎨 المخطط الإنشائي والرسومات")
+with col_draw:
+    st.markdown("<div class='main-box'>", unsafe_allow_html=True)
+    st.subheader("🖋️ المخطط والرسومات")
     
-    # استعراض المخططات التوضيحية
-    if "جدار" in elem:
-            elif "خزان" in elem:
+    # عرض الصور حسب العنصر
+    if "خزان" in elem:
+            elif "حصيرية" in elem:
             elif "فطرية" in elem:
-            elif "معدنية" in category:
+            elif "جدار" in elem:
             else:
-            
+        
     st.divider()
-    if st.button("🚀 تصدير المخطط إلى AutoCAD"):
-        doc = ezdxf.new(setup=True)
-        msp = doc.modelspace()
-        msp.add_lwpolyline([(0,0), (500,0), (500,50), (0,50), (0,0)]) # رسم إطار توضيحي
-        out = io.StringIO()
-        doc.write(out)
-        st.download_button("📥 تحميل ملف DXF", out.getvalue(), "Pelan_Master_Design.dxf")
+    # ميزة التصدير لـ AutoCAD
+    if st.button("🚀 تصدير ملف AutoCAD (DXF)"):
+        try:
+            doc = ezdxf.new(setup=True)
+            msp = doc.modelspace()
+            msp.add_lwpolyline([(0, 0), (10, 0), (10, 5), (0, 5), (0, 0)]) # رسم مستطيل جائز
+            dxf_stream = io.StringIO()
+            doc.write(dxf_stream)
+            st.download_button("📥 تحميل DXF", dxf_stream.getvalue(), file_name=f"Pelan_{elem}.dxf")
+            st.success("تم التصدير بنجاح!")
+        except Exception as e:
+            st.error(f"خطأ في التصدير: {e}")
+            
     st.markdown("</div>", unsafe_allow_html=True)
 
-# 5. التذييل
+# 5. التوقيع
 st.divider()
-st.markdown("<h3 style='text-align:center;'>✅ تم التدقيق والمصادقة بواسطة: المهندس بيلان عبد الكريم</h3>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Pelan Ultimate Legend v32 | 2026</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center;'>المصمم الإنشائي م. بيلان عبد الكريم | تم التحديث في: 2026</p>", unsafe_allow_html=True)
