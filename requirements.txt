@@ -1,4 +1,6 @@
 streamlit
 matplotlib
 numpy
+arabic-reshaper
+python-bidi
 fpdf2
