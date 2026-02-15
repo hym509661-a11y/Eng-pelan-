@@ -18,7 +18,7 @@ st.markdown("""
 with st.sidebar:
     st.header("📂 اختيار العنصر")
     choice = st.selectbox("العنصر المطلوب:", 
-        ["جائز (Beam)", "بلاطة مصمتة (Solid)", "بلاطة هوردي (Ribbed)", "أساس منفرد (Footing)", "عمود (Column)"])
+        ["جائز (Beam)", "بلاطة مصمتة (Solid Slab)", "بلاطة هوردي (Ribbed Slab)", "أساس منفرد (Isolated Footing)", "عمود (Column)"])
     
     st.divider()
     st.header("📐 أبعاد المقطع")
@@ -39,7 +39,7 @@ def compute_design():
     d = h_tot - 5
     
     # 1. حسابات الجوائز والبلاطات
-    if choice == "جائز (Beam)" or "Solid" in choice or "Ribbed" in choice:
+    if choice == "جائز (Beam)" or "Slab" in choice:
         if choice == "جائز (Beam)":
             if support == "بسيط": coef, c_def = 1/8, 5/384
             elif support == "كابولي": coef, c_def = 1/2, 1/8
@@ -59,7 +59,7 @@ def compute_design():
 
     # 2. حسابات الأساسات
     elif "Footing" in choice:
-        Area_f = (wu / 20) * 1.1 # تربة 2 كغ/سم2
+        Area_f = (wu / 20) * 1.1 # تحمل تربة افتراضي 2 كغ/سم2
         return wu, Area_f, np.sqrt(Area_f), 0
 
     # 3. حسابات الأعمدة
@@ -77,7 +77,7 @@ left_col, right_col = st.columns([1, 1])
 
 with left_col:
     st.subheader("📑 خلاصة التدقيق")
-    if choice == "جائز (Beam)" or "Solid" in choice or "Ribbed" in choice:
+    if choice == "جائز (Beam)" or "Slab" in choice:
         st.metric("العزم Mu", f"{abs(results[0]):.2f} t.m")
         n_bars = int(np.ceil(results[1] / (np.pi*(phi/10)**2/4)))
         st.success(f"التسليح المقترح: {max(n_bars, 2)} T{phi}")
