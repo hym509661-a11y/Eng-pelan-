@@ -3,82 +3,94 @@ import numpy as np
 import ezdxf
 import io
 
-# 1. UI Setup
-st.set_page_config(page_title="Pelan v76", layout="wide")
-st.markdown("<style>.stApp{background-color:#0b1619;color:#fff}.card{background:#142d2d;border:2px solid #d4af37;border-radius:15px;padding:20px}.gold{color:#d4af37;font-weight:bold}</style>", unsafe_allow_html=True)
-st.markdown("<div class='card' style='text-align:center;'><h1 style='color:#d4af37;'>Pelan Engineering v76</h1><p class='gold'>Designed by Eng. Pelan Abdulkarim</p></div>", unsafe_allow_html=True)
+# 1. Professional UI Configuration
+st.set_page_config(page_title="Pelan Pro v77", layout="wide")
 
-# 2. Input Logic (No Deep Indentation)
-with st.sidebar:
-    st.header("Settings")
-    mode = st.selectbox("المجال:", ["خرسانة", "خزانات", "زلازل"])
-    meth = st.radio("المنهجية:", ["Ultimate", "Elastic"])
-    B_val = st.number_input("B (cm):", 20, 500, 30)
-    H_val = st.number_input("H (cm):", 10, 500, 60)
-    L_val = st.number_input("L (m):", 1.0, 30.0, 5.0)
-    Load = st.number_input("الحمل (kN):", 1.0, 100000.0, 100.0)
-    phi = st.selectbox("القطر (mm):", [12, 14, 16, 18, 20, 25, 32], index=2)
+# Custom CSS for Professional Dark Gold Theme
+st.markdown("""
+<style>
+    .reportview-container { background: #0e1117; }
+    .main-card { background: #1a1c23; border: 1px solid #d4af37; border-radius: 10px; padding: 25px; color: white; }
+    .metric-box { background: #262730; border-left: 5px solid #d4af37; padding: 15px; border-radius: 5px; margin: 10px 0; }
+    .stButton>button { background-color: #d4af37; color: black; width: 100%; border-radius: 5px; font-weight: bold; }
+    h1, h2, h3 { color: #d4af37 !important; }
+</style>
+""", unsafe_allow_html=True)
 
-# 3. Calculation Engine (Atomic Structure)
-fy, fcu, area_bar = 420, 25, (np.pi * phi**2) / 4
-res = {}
-steel_text = "Φ16"
-
-# Concrete Section
-if mode == "خرسانة":
-    sub_mode = st.sidebar.selectbox("العنصر:", ["جائز", "عمود", "أساس"])
-    if sub_mode == "جائز":
-        M = (Load * L_val**2) / 8 if meth == "Ultimate" else (Load * L_val**2) / 10
-        As = (M * 10**6) / (0.87 * fy * (H_val-5) * 10)
+# 2. Engineering Engine (Independent Functions)
+def calc_concrete(elem, B, H, L, P, phi, meth):
+    area_bar = (np.pi * phi**2) / 4
+    if elem == "Beam":
+        M = (P * L**2) / 8 if meth == "Ultimate" else (P * L**2) / 10
+        As = (M * 1e6) / (0.87 * 420 * (H-5) * 10)
         n = max(2, int(np.ceil(As / area_bar)))
-        res = {"Moment": f"{M:.1f} kNm", "Steel": f"{n} T {phi}"}
-        steel_text = f"{n} T {phi}"
-    if sub_mode == "عمود":
-        Ag = B_val * H_val * 100
-        As_col = ( (Load*1000) - (0.35 * fcu * Ag) ) / (0.67 * fy)
+        return {"Moment (kNm)": round(M, 2), "Steel": f"{n} T {phi}"}, f"{n} T {phi}"
+    elif elem == "Column":
+        Ag = B * H * 100
+        As_col = ((P*1000) - (0.35 * 25 * Ag)) / (0.67 * 420)
         n = max(4, int(np.ceil(max(As_col, 0.01*Ag) / area_bar)))
-        res = {"Load": f"{Load} kN", "Steel": f"{n} T {phi}"}
-        steel_text = f"{n} T {phi}"
-    if sub_mode == "أساس":
-        n = max(6, int(np.ceil((0.0018 * B_val * H_val * 100) / area_bar)))
-        res = {"Section": f"{B_val}x{H_val}", "Steel": f"{n} T {phi}/m"}
-        steel_text = f"{n} T {phi} /m"
+        return {"Axial Load (kN)": P, "Reinforcement": f"{n} T {phi}"}, f"{n} T {phi}"
+    return {}, "Φ16"
 
-# Tanks Section
-if mode == "خزانات":
-    Mt = (10 * (H_val/100) * L_val**2) / 12
-    nt = max(7, int(np.ceil(((Mt * 10**6) / (0.87 * fy * (H_val-5) * 10)) / area_bar)))
-    res = {"Water Moment": f"{Mt:.1f} kNm", "Wall Steel": f"{nt} T {phi}/m"}
-    steel_text = f"{nt} T {phi} /m"
+def calc_tank(H, L, phi):
+    area_bar = (np.pi * phi**2) / 4
+    Mt = (10 * (H/100) * L**2) / 12
+    nt = max(7, int(np.ceil(((Mt * 1e6) / (0.87 * 420 * (H-5) * 10)) / area_bar)))
+    return {"Wall Moment": round(Mt, 2), "Wall Steel": f"{nt} T {phi} /m'"}, f"{nt} T {phi} /m'"
 
-# Seismic Section
-if mode == "زلازل":
-    Vb = 0.15 * Load
-    res = {"Base Shear": f"{Vb:.1f} kN", "Status": "Safe"}
-    steel_text = "Seismic Bars"
+# 3. Sidebar Inputs
+st.sidebar.header("📂 Project Manager")
+domain = st.sidebar.selectbox("Design Domain", ["Concrete Structure", "Water Tanks", "Seismic Analysis"])
+meth = st.sidebar.radio("Methodology", ["Ultimate", "Elastic"])
 
-# 4. Display Results
-c1, c2 = st.columns([1.2, 1])
-with c1:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("📊 Results")
-    for k, v in res.items():
-        st.write(f"**{k}:** {v}")
+st.sidebar.header("📏 Dimensions & Loads")
+B = st.sidebar.number_input("Width B (cm)", 20, 500, 30)
+H = st.sidebar.number_input("Height H (cm)", 10, 500, 60)
+L = st.sidebar.number_input("Length L (m)", 1.0, 50.0, 5.0)
+P = st.sidebar.number_input("Design Load (kN)", 1.0, 100000.0, 150.0)
+phi = st.sidebar.selectbox("Bar Diameter (mm)", [12, 14, 16, 18, 20, 25, 32], index=2)
+
+# 4. Main Interface Logic
+st.markdown("<div class='main-card' style='text-align:center;'><h1>🏗️ Pelan Professional Suite v77</h1><p>Integrated Engineering Design Solution | 2026</p></div>", unsafe_allow_html=True)
+
+col1, col2 = st.columns([1.5, 1])
+
+with col1:
+    st.subheader("📊 Engineering Analysis")
+    results, bar_desc = {}, "Φ16"
+    
+    if domain == "Concrete Structure":
+        elem = st.selectbox("Select Element", ["Beam", "Column"])
+        results, bar_desc = calc_concrete(elem, B, H, L, P, phi, meth)
+        
+    
+    elif domain == "Water Tanks":
+        results, bar_desc = calc_tank(H, L, phi)
+        
+        
+    elif domain == "Seismic Analysis":
+        vb = 0.15 * P
+        results = {"Base Shear (Vb)": f"{vb:.2f} kN", "Seismic Zone": "Zone 2B"}
+        bar_desc = "Capped Bars"
+
+    for k, v in results.items():
+        st.markdown(f"<div class='metric-box'><b>{k}:</b> {v}</div>", unsafe_allow_html=True)
+
+with col2:
+    st.subheader("🖋️ Detailing & BBS")
+    st.markdown(f"""
+    <div style='background:#132a2a; border:2px dashed #d4af37; border-radius:15px; padding:40px; text-align:center;'>
+        <h1 style='color:#50c878; margin:0;'>{bar_desc}</h1>
+        <small style='color:#d4af37;'>Design Description</small>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.divider()
-    if mode == "خرسانة":
-        
-    if mode == "خزانات":
-        
-    st.info("Verified by Pelan 2026")
-    st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("🚀 Export AutoCAD (DXF)"):
+        doc = ezdxf.new(setup=True)
+        doc.modelspace().add_text(f"PELAN PRO v77 - {domain}", dxfattribs={'height': 7})
+        buf = io.StringIO()
+        doc.write(buf)
+        st.download_button("📥 Download Drawing", buf.getvalue(), "Pelan_Pro.dxf")
 
-with c2:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("🖋️ Detailing")
-    st.markdown(f"<div style='border:2px dashed #d4af37;padding:25px;text-align:center;border-radius:15px;background:#132a2a'><h2 style='color:#50c878'>{steel_text}</h2></div>", unsafe_allow_html=True)
-    if st.button("Export DXF"):
-        doc = ezdxf.new(setup=True); msp = doc.modelspace()
-        msp.add_text("PELAN v76", dxfattribs={'height': 5}).set_placement((0, 0))
-        buf = io.StringIO(); doc.write(buf)
-        st.download_button("Download", buf.getvalue(), "Pelan.dxf")
-    st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:gray;'>Professional Edition © 2026 Eng. Pelan Abdulkarim</p>", unsafe_allow_html=True)
