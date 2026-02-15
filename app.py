@@ -2,103 +2,161 @@ import streamlit as st
 import numpy as np
 import ezdxf
 import io
+from datetime import datetime
 
-# 1. إعدادات الواجهة الاحترافية (Dark Gold Theme)
-st.set_page_config(page_title="Pelan v78 Absolute", layout="wide")
-st.markdown("<style>.stApp{background-color:#0b1619;color:#fff}.card{background:#142d2d;border:2px solid #d4af37;border-radius:15px;padding:20px;margin-bottom:15px}.gold{color:#d4af37;font-weight:bold}</style>", unsafe_allow_html=True)
+# 1. إعدادات الواجهة والطباعة
+st.set_page_config(page_title="Eng. Pelan Office", layout="wide")
+st.markdown("""
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .stApp { background-color: white !important; color: black !important; }
+        .card { border: 1px solid #000 !important; margin: 0 !important; padding: 10px !important; }
+    }
+    .stApp { background-color: #0b1619; color: #fff; }
+    .report-card { background: #f8f9fa; color: #1a1a1a; border-left: 10px solid #d4af37; padding: 30px; border-radius: 5px; font-family: 'Arial'; }
+    .stamp-box { border: 3px double #d4af37; padding: 15px; width: 300px; text-align: center; margin-top: 50px; float: left; color: #1a1a1a; background: #fff; }
+    .gold-text { color: #d4af37; font-weight: bold; }
+</style>
+""", unsafe_allow_html=True)
 
-st.markdown("<div class='card' style='text-align:center;'><h1 style='color:#d4af37;'>🏗️ Pelan Absolute Suite v78</h1><p class='gold'>الموسوعة الهندسية الشاملة | م. بيلان عبد الكريم | 2026</p></div>", unsafe_allow_html=True)
-
-# 2. لوحة التحكم الشاملة (The Master Sidebar)
+# 2. لوحة التحكم الجانبية (مدخلات المشروع)
 with st.sidebar:
-    st.header("📂 إدارة المشروع")
-    category = st.selectbox("اختر التصنيف:", ["الخرسانة (العناصر)", "البلاطات (Slabs)", "الأساسات (Foundations)", "الخزانات والمنشآت المائية", "التحليل الزلزالي"])
+    st.markdown("<h2 class='no-print'>⚙️ إعدادات المذكرة</h2>", unsafe_allow_html=True)
+    project_name = st.text_input("اسم المشروع:", "فيلا سكنية - نموذج A")
+    owner_name = st.text_input("اسم المالك:", "مجمع المهندسين")
+    category = st.selectbox("العنصر الإنشائي:", ["خرسانة (جوائز وأعمدة)", "بلاطات (Slabs)", "أساسات (Foundations)", "خزانات مائية"])
     
     st.divider()
-    st.header("📏 المدخلات العامة")
     B = st.number_input("العرض B (cm):", 20, 1000, 30)
     H = st.number_input("الارتفاع/السماكة H (cm):", 10, 1000, 60)
-    L = st.number_input("الطول/البحر L (m):", 0.1, 100.0, 5.0)
-    Load = st.number_input("الحمل المصمم (kN أو kN/m):", 1.0, 1000000.0, 150.0)
-    phi = st.selectbox("القطر الرئيسي (mm):", [8, 10, 12, 14, 16, 18, 20, 25, 32], index=4)
-    phi_str = st.selectbox("قطر الكانات (mm):", [8, 10, 12], index=1)
+    L = st.number_input("الطول L (m):", 0.1, 100.0, 5.0)
+    Load = st.number_input("الحمل المصمم (kN):", 1.0, 1000000.0, 150.0)
+    phi = st.selectbox("القطر (mm):", [12, 14, 16, 18, 20, 25], index=2)
 
-# 3. محرك الحسابات (The Absolute Engine)
+# 3. محرك الحسابات الهندسية
 f_y, f_cu = 420, 25
 area_bar = (np.pi * phi**2) / 4
-results = {}
+results = []
 detailing = ""
 
-# --- قسم الخرسانة (جوائز وأعمدة) ---
-if category == "الخرسانة (العناصر)":
-    elem = st.sidebar.selectbox("نوع العنصر:", ["جائز مستمر", "جائز بسيط", "عمود مستطيل", "عمود دائري"])
-    if "جائز" in elem:
-        M = (Load * L**2) / (8 if "بسيط" in elem else 10)
-        As = (M * 1e6) / (0.87 * f_y * (H-5) * 10)
-        n = max(2, int(np.ceil(As / area_bar)))
-        results = {"العزم التصميمي": f"{M:.1f} kNm", "الحديد السفلي": f"{n} T {phi}", "الحديد العلوي": f"{max(2, int(n*0.3))} T {phi}", "الكانات": f"Φ{phi_str} @ 15cm"}
-        detailing = f"Main: {n} T {phi} | Stirrups: Φ{phi_str}@15"
-    else: # أعمدة
-        Ag = (B * H * 100) if "مستطيل" in elem else (np.pi * (B**2) / 4 * 100)
-        As_req = (Load * 1000 - 0.35 * f_cu * Ag) / (0.67 * f_y)
-        n = max(4 if "مستطيل" in elem else 6, int(np.ceil(max(As_req, 0.01 * Ag) / area_bar)))
-        results = {"مساحة المقطع": f"{Ag/100:.1f} cm²", "عدد القضبان": f"{n} T {phi}", "الكانات": f"Φ{phi_str} @ 20cm"}
-        detailing = f"{n} T {phi}"
+if "خرسانة" in category:
+    M = (Load * L**2) / 8
+    As = (M * 1e6) / (0.87 * f_y * (H-5) * 10)
+    n = max(2, int(np.ceil(As / area_bar)))
+    results = [
+        ("الحمل المطبق (Ultimate Load)", f"{Load} kN"),
+        ("عزم الانعطاف (Moment)", f"{M:.2f} kNm"),
+        ("مساحة الحديد المطلوبة (As)", f"{As:.1f} mm²"),
+        ("التسليح المقترح", f"{n} T {phi}")
+    ]
+    detailing = f"{n} T {phi}"
 
-# --- قسم البلاطات ---
-elif category == "البلاطات (Slabs)":
-    slab_type = st.sidebar.selectbox("نوع البلاطة:", ["مصمتة (Solid Slab)", "هوردي (Ribbed Slab)", "فلات (Flat Slab)"])
+elif "بلاطات" in category:
     M = (Load * L**2) / 10
     As = (M * 1e6) / (0.87 * f_y * (H-3) * 10)
     n = max(5, int(np.ceil(As / area_bar)))
-    results = {"نوع البلاطة": slab_type, "العزم": f"{M:.1f} kNm/m", "التسليح/م": f"{n} T {phi}"}
+    results = [
+        ("سماكة البلاطة", f"{H} cm"),
+        ("عزم البلاطة", f"{M:.2f} kNm/m'"),
+        ("التسليح المعتمد/م", f"{n} T {phi}")
+    ]
     detailing = f"{n} T {phi} / m'"
 
-# --- قسم الأساسات ---
-elif category == "الأساسات (Foundations)":
-    f_type = st.sidebar.selectbox("نوع الأساس:", ["منفرد (Isolated)", "مشترك (Combined)", "حصيرة (Raft)"])
+elif "أساسات" in category:
     stress = Load / (B * L / 10000)
     n = max(6, int(np.ceil((0.0018 * B * H * 100) / area_bar)))
-    results = {"إجهاد التربة": f"{stress:.2f} kN/m²", "التسليح (فرش)": f"{n} T {phi}/m", "التسليح (غطاء)": f"{n} T {phi}/m"}
+    results = [
+        ("أبعاد القاعدة", f"{B} x {L} cm"),
+        ("إجهاد التربة المحسوب", f"{stress:.2f} kN/m²"),
+        ("تسليح القاعدة (اتجاهين)", f"{n} T {phi} / m'")
+    ]
     detailing = f"{n} T {phi} @ 15cm"
 
-# --- قسم الخزانات ---
-elif category == "الخزانات والمنشآت المائية":
-    t_type = st.sidebar.selectbox("نوع الخزان:", ["مستطيل أرضي", "دائري عالي", "جدار استنادي"])
+else: # خزانات
     Mt = (10 * (H/100) * L**2) / 12
     n = max(7, int(np.ceil(((Mt * 1e6) / (0.87 * f_y * (H-5) * 10)) / area_bar)))
-    results = {"عزم الماء/التربة": f"{Mt:.1f} kNm", "تسليح الشد": f"{n} T {phi}/m", "توزيع أفقي": f"Φ12 @ 20cm"}
+    results = [
+        ("ضغط الماء التصميمي", f"{10 * H/100:.2f} kN/m²"),
+        ("العزم المؤثر على الجدار", f"{Mt:.2f} kNm"),
+        ("تسليح جدار الخزان", f"{n} T {phi} / m'")
+    ]
     detailing = f"{n} T {phi} / m'"
 
-# --- قسم الزلازل ---
-else:
-    Vb = 0.15 * Load
-    results = {"قص القاعدة Vb": f"{Vb:.1f} kN", "توزيع القوى": "Linear", "التسليح": "عرضي مكثف (Seismic)"}
-    detailing = "Capped Reinforcement"
+# 4. المذكرة الحسابية الجاهزة للطباعة
+st.markdown("<h1 style='text-align:center;' class='no-print'>📂 المكتب الهندسي - م. بيلان مصطفى</h1>", unsafe_allow_html=True)
 
-# 4. عرض النتائج (Professional Layout)
-col1, col2 = st.columns([1.3, 1])
-
-with col1:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("📊 التقرير الفني للنتائج")
-    for k, v in results.items():
-        st.write(f"**{k}:** {v}")
-    st.divider()
-    # هنا تظهر الصور التوضيحية بناءً على القسم
-    st.info(f"تم التصميم لعنصر ({category}) وفق الكودات العالمية 2026")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col2:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("🖋️ تفريد الحديد (BBS)")
-    st.markdown(f"<div style='border:2px dashed #d4af37;padding:30px;text-align:center;border-radius:15px;background:#132a2a'><h1 style='color:#50c878'>{detailing}</h1><p class='gold'>م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+# الجزء القابل للطباعة
+st.markdown(f"""
+<div class="report-card">
+    <div style="text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 10px;">
+        <h2 style="margin:0;">المذكرة الحسابية الإنشائية</h2>
+        <p>التاريخ: {datetime.now().strftime('%Y-%m-%d')}</p>
+    </div>
     
-    if st.button("🚀 تصدير إلى AutoCAD (DXF)"):
-        doc = ezdxf.new(setup=True); msp = doc.modelspace()
-        msp.add_text(f"PELAN ABSOLUTE - {category}", dxfattribs={'height': 5}).set_placement((0, 0))
-        buf = io.StringIO(); doc.write(buf)
-        st.download_button("📥 تحميل المخطط", buf.getvalue(), "Pelan_Absolute.dxf")
-    st.markdown("</div>", unsafe_allow_html=True)
+    <div style="margin-top: 20px;">
+        <p><b>اسم المشروع:</b> {project_name}</p>
+        <p><b>اسم المالك:</b> {owner_name}</p>
+        <p><b>العنصر المدروس:</b> {category}</p>
+    </div>
 
-st.markdown("<p style='text-align:center;color:#d4af37'>Pelan Absolute Suite v78 | الموسوعة الهندسية الكاملة</p>", unsafe_allow_html=True)
+    <table style="width:100%; margin-top: 20px; border-collapse: collapse;">
+        <tr style="background: #eee;">
+            <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">الوصف البرمجي</th>
+            <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">القيمة التصميمية</th>
+        </tr>
+""", unsafe_allow_html=True)
+
+for label, value in results:
+    st.markdown(f"""
+        <tr>
+            <td style="border: 1px solid #ddd; padding: 10px;">{label}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; font-weight: bold;">{value}</td>
+        </tr>
+    """, unsafe_allow_html=True)
+
+st.markdown(f"""
+    </table>
+    
+    <div style="margin-top: 20px; padding: 15px; background: #fff; border: 1px dashed #d4af37;">
+        <h3 style="margin:0; color:#d4af37;">التوصيف الفني للتسليح (BBS):</h3>
+        <p style="font-size: 24px; font-weight: bold; margin: 10px 0;">{detailing}</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# إضافة صورة توضيحية حسب العنصر
+if "خزانات" in category:
+    
+elif "أساسات" in category:
+    
+else:
+    
+
+# الختم الاحترافي في نهاية المذكرة
+st.markdown(f"""
+    <div class="stamp-box">
+        <p style="margin:0; font-weight:bold; font-size:18px;">المهندس المدني</p>
+        <p style="margin:5px 0; font-size:20px; color:#d4af37; font-weight:bold;">بيلان مصطفى عبدالكريم</p>
+        <p style="margin:0; font-size:14px;">دراسة - إشراف - تعهدات</p>
+        <div style="margin-top:10px; border-top:1px solid #d4af37; padding-top:5px; font-size:12px;">
+            توقيع المكتب المعتمد
+        </div>
+    </div>
+    <div style="clear:both;"></div>
+</div>
+""", unsafe_allow_html=True)
+
+# أزرار الإجراءات
+st.divider()
+c1, c2 = st.columns(2)
+with c1:
+    st.button("🖨️ طباعة المذكرة الحسابية (Ctrl+P)", on_click=None)
+with c2:
+    if st.button("🚀 تصدير المخطط (DXF)"):
+        doc = ezdxf.new(setup=True)
+        doc.modelspace().add_text(f"ENG. PELAN OFFICE - {project_name}", dxfattribs={'height': 5})
+        buf = io.StringIO()
+        doc.write(buf)
+        st.download_button("📥 تحميل ملف AutoCAD", buf.getvalue(), "Project_Pelan.dxf")
+
+st.markdown("<p style='text-align:center; color:gray;' class='no-print'>تم التدقيق بواسطة نظام بيلان الذكي v79 © 2026</p>", unsafe_allow_html=True)
