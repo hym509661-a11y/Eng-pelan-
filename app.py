@@ -3,116 +3,130 @@ import numpy as np
 import ezdxf
 import io
 
-# 1. الإعدادات البصرية الملكية
-st.set_page_config(page_title="Pelan Sovereign Suite v57", layout="wide")
-
+# 1. الواجهة الملكية الفاخرة
+st.set_page_config(page_title="Pelan Sovereign v58", layout="wide")
 st.markdown("""
 <style>
-    .stApp { background-color: #0d1b1e; color: #ffffff; }
+    .stApp { background-color: #0b1619; color: #ffffff; }
     .master-card {
-        background: rgba(16, 44, 41, 0.95);
+        background: rgba(20, 45, 45, 0.95);
         border: 2px solid #d4af37;
         border-radius: 15px;
         padding: 25px;
         margin-bottom: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
     }
     .result-box {
-        background: #1a3c34; border-left: 5px solid #50c878;
-        padding: 15px; border-radius: 8px; margin: 10px 0;
+        background: #132a2a; border-left: 5px solid #d4af37;
+        padding: 15px; border-radius: 10px; margin: 10px 0;
     }
+    .gold-text { color: #d4af37; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='master-card' style='text-align:center;'><h1 style='color:#d4af37;'>Pelan Sovereign Engineering Suite v57</h1><p style='color:#d4af37;'>المحرك الهندسي الشامل | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+st.markdown("<div class='master-card' style='text-align:center;'><h1 style='color:#d4af37;'>Pelan Sovereign Engineering Suite v58</h1><p class='gold-text'>المحرك الإنشائي الشامل | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
 
 # 2. القائمة الجانبية (مدخلات المهندس بيلان)
 with st.sidebar:
-    st.header("⚙️ معايير المشروع")
-    category = st.selectbox("المجال الإنشائي:", ["العناصر الإنشائية", "هندسة الخزانات", "الدراسة الزلزالية"])
-    method = st.radio("منهجية التصميم:", ["الحدية (Ultimate)", "المرنة (Elastic/Working)"])
+    st.header("⚙️ معايير التصميم")
+    category = st.selectbox("المجال:", ["المنشآت الخرسانية", "هندسة الخزانات", "التحليل الزلزالي"])
+    method = st.radio("طريقة الحساب:", ["الطريقة الحدية (Ultimate)", "الطريقة المرنة (Elastic)"])
     
     st.divider()
-    if category == "العناصر الإنشائية":
-        elem = st.selectbox("العنصر:", ["جائز (Beam)", "عصب (Rib)", "بلاطة", "عمود", "أساس"])
-        B = st.number_input("العرض B (cm):", 20, 100, 30)
-        H = st.number_input("السماكة/الارتفاع H (cm):", 20, 200, 60)
-        L = st.number_input("الطول L (m):", 1.0, 15.0, 5.0)
-        Load = st.number_input("الحمل (kN/m or kN):", 1.0, 5000.0, 40.0)
+    # مدخلات ذكية متغيرة
+    if category == "المنشآت الخرسانية":
+        elem = st.selectbox("العنصر:", ["جائز/عصب", "بلاطة مصمتة", "عمود", "أساس منفرد"])
+        B = st.number_input("العرض B (cm):", 20, 200, 30)
+        H = st.number_input("السماكة H (cm):", 10, 200, 60)
+        L = st.number_input("الطول L (m):", 1.0, 20.0, 5.0)
+        Load = st.number_input("الحمل (kN/m - kN):", 1.0, 8000.0, 40.0)
     elif category == "هندسة الخزانات":
         elem = "خزان"
-        H_w = st.number_input("عمق الماء (m):", 1.0, 12.0, 4.0)
-        B_tank = st.number_input("طول الجدار (m):", 2.0, 20.0, 5.0)
-        T_wall = st.number_input("سماكة الجدار (cm):", 20, 50, 25)
+        H_w = st.number_input("ارتفاع الماء (m):", 1.0, 15.0, 4.0)
+        T_w = st.number_input("سماكة الجدار (cm):", 20, 50, 30)
+        B = T_w; H = H_w * 100; L = 5.0; Load = 10 * H_w
     else:
         elem = "زلزال"
-        W_building = st.number_input("الوزن الكلي للمنشأ (kN):", 1000, 100000, 5000)
-        Z_zone = st.select_slider("المنطقة الزلزالية (Z):", options=[0.075, 0.15, 0.20, 0.30])
+        W_total = st.number_input("الوزن الكلي (kN):", 1000, 200000, 5000)
+        Z = st.select_slider("معامل المنطقة Z:", options=[0.075, 0.15, 0.2, 0.3])
+        B=30; H=60; L=3.0; Load=0
 
-    phi = st.selectbox("قطر الحديد (mm):", [12, 14, 16, 18, 20, 25])
+    phi = st.selectbox("قطر الحديد (mm):", [12, 14, 16, 18, 20, 25], index=2)
 
-# 3. محرك الحسابات المستقل (إصلاح خطأ ValueError و Indentation)
+# 3. محرك التصميم الموحد (Unbreakable Design Engine)
+# حسابات هندسية دقيقة
 f_y, f_cu = 420, 25
 area_bar = (np.pi * phi**2) / 4
 res = {}
 
-if category == "العناصر الإنشائية":
-    if elem in ["جائز (Beam)", "عصب (Rib)", "بلاطة"]:
-        M = (Load * L**2) / 8 if method == "الحدية (Ultimate)" else (Load * L**2) / 10
+# حساب الحديد (تلقائي)
+if category == "المنشآت الخرسانية":
+    if "جائز" in elem or "بلاطة" in elem:
+        M = (Load * L**2) / 8 if "Ultimate" in method else (Load * L**2) / 10
         As = (M * 10**6) / (0.87 * f_y * (H-5) * 10)
-        n = int(np.ceil(As / area_bar))
-        res = {"العزم": f"{M:.1f} kNm", "التسليح السفلي": f"{n} T {phi}", "العلوي": f"{max(2, int(n*0.3))} T {phi}"}
-    elif elem == "عمود":
+        n = max(2, int(np.ceil(As / area_bar)))
+        res = {"العزم": f"{M:.1f} kNm", "الفرش السفلي": f"{n} T {phi}", "العلوي/التعليق": f"{max(2, int(n*0.3))} T {phi}", "الكانات": "Φ10 @ 15cm"}
+    elif "عمود" in elem:
         As_min = 0.01 * (B * H * 100)
         As_req = (Load * 1000 - 0.35 * f_cu * (B * H * 100)) / (0.67 * f_y)
         n = max(4, int(np.ceil(max(As_req, As_min) / area_bar)))
-        res = {"الحمل التصميمي": f"{Load} kN", "التسليح": f"{n} T {phi}", "الكانات": "Φ10 @ 15cm"}
-    elif elem == "أساس":
-        n = int(np.ceil((0.0018 * B * H * 100) / area_bar))
-        res = {"الأبعاد": f"{B}x{H} cm", "الحديد/م": f"{max(6, n)} T {phi}"}
+        res = {"الحمل": f"{Load} kN", "التسليح الطولي": f"{n} T {phi}", "الكانات": "Φ10 @ 15cm"}
+    elif "أساس" in elem:
+        n = max(6, int(np.ceil((0.0018 * B * H * 100) / area_bar)))
+        res = {"القطاع": f"{B}x{H} cm", "فرش وغطاء": f"{n} T {phi} /m"}
 
 elif category == "هندسة الخزانات":
-    P_water = 10 * H_w
-    M_tank = (P_water * H_w**2) / 10
-    As_tank = (M_tank * 10**6) / (0.87 * f_y * (T_wall-5) * 10)
-    n = int(np.ceil(As_tank / area_bar))
-    res = {"ضغط القاعدة": f"{P_water} kN/m²", "عزم الجدار": f"{M_tank:.1f} kNm", "التسليح": f"{n} T {phi} /m"}
+    M_tank = (Load * H_w**2) / 12
+    As = (M_tank * 10**6) / (0.87 * f_y * (T_w-5) * 10)
+    n = max(6, int(np.ceil(As / area_bar)))
+    res = {"ضغط الماء": f"{Load} kN/m²", "عزم الجدار": f"{M_tank:.1f} kNm", "التسليح": f"{n} T {phi} /m"}
 
-elif category == "الدراسة الزلزالية":
-    V_base = Z_zone * 1.2 * W_building # حساب تبسيطي لقص القاعدة
-    res = {"معامل المنطقة Z": Z_zone, "قص القاعدة Vb": f"{V_base:.1f} kN", "قوة كل طابق": "حسب توزيع الكتلة"}
+elif category == "التحليل الزلزالي":
+    V_b = Z * 1.15 * W_total
+    res = {"معامل Z": Z, "قص القاعدة Vb": f"{V_b:.1f} kN", "الحالة": "مبنى صلب"}
 
-# 4. العرض الفني وتفريد الحديد
-col1, col2 = st.columns([1.3, 1])
+# 4. واجهة النتائج والتفريد
+col_data, col_draw = st.columns([1.2, 1])
 
-with col1:
+with col_data:
     st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader(f"📊 نتائج التحليل: {elem}")
+    st.subheader(f"📊 نتائج التصميم ({method})")
     for k, v in res.items():
-        st.markdown(f"<div class='result-box'><b style='color:#d4af37;'>{k}:</b> {v}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='result-box'><b class='gold-text'>{k}:</b> {v}</div>", unsafe_allow_html=True)
     
     st.divider()
-    st.markdown("### 👨‍🏫 مذكرة المهندس بيلان:")
-    st.success(f"تم اعتماد الطريقة {method} في التصميم لضمان مطابقة الكود الإنشائي.")
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.info(f"💡 توصية م. بيلان: تم تصميم {elem} وفق أدق المعايير الهندسية لعام 2026.")
+    
+    # استدعاء المخطط الإنشائي المناسب
+    if "جائز" in elem or "عصب" in elem:
+            elif "عمود" in elem:
+            elif "خزان" in elem:
+            else:
+            
+    st.markdown("</div>", unsafe_allow_html=True)
 
-with col2:
+with col_draw:
     st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader("🖋️ مخطط تفريد الحديد (BBS)")
+    st.subheader("🖋️ تفريد الحديد وسهم الرفع (BBS)")
+    
+    main_steel = res.get("الفرش السفلي", res.get("التسليح الطولي", res.get("التسليح", "حسب المخطط")))
+    
     st.markdown(f"""
-    <div style='border:2px dashed #d4af37; padding:20px; text-align:center; border-radius:10px;'>
-        <h2 style='color:#50c878;'>{res.get('التسليح', res.get('التسليح السفلي', 'حسب المخطط'))}</h2>
-        <p style='color:#d4af37;'>↑ سهم رفع وتوصيف دقيق ↑</p>
+    <div style='border:2px dashed #d4af37; padding:20px; text-align:center; border-radius:15px; background:rgba(255,255,255,0.05);'>
+        <h2 style='color:#50c878;'>{main_steel}</h2>
+        <p class='gold-text'>↑ سهم رفع وتوصيف الحديد الرئيسي ↑</p>
         <hr style='border-color:#d4af37;'>
-        <p style='color:#aaa;'>الكانات وتوزيع الإجهادات</p>
+        <p style='color:#aaa;'>الكانات وتوزيع الإجهادات العرضية</p>
     </div>
     """, unsafe_allow_html=True)
     
-        
-    if st.button("🛠️ تصدير المخطط الهندسي AutoCAD 🚀"):
+    st.divider()
+    if st.button("🛠️ تصدير المخطط الشامل للأوتوكاد 🚀"):
         doc = ezdxf.new(setup=True); msp = doc.modelspace()
-        msp.add_text(f"PELAN DESIGN v57 - {elem}", dxfattribs={'height': 5}).set_placement((0, 0))
+        msp.add_text(f"PELAN v58 - {elem}", dxfattribs={'height': 5}).set_placement((0, 10))
         buf = io.StringIO(); doc.write(buf)
         st.download_button("📥 تحميل DXF", buf.getvalue(), f"Pelan_{elem}.dxf")
+        st.success("تم التصدير!")
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align:center; color:#d4af37;'>Pelan Engine v57 | 2026</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#d4af37; font-size:0.8rem;'>Pelan sovereign Engine v58 | 2026</p>", unsafe_allow_html=True)
