@@ -24,7 +24,7 @@ st.markdown("""
 st.markdown("<h1 style='text-align:center; color:#a8eb12;'>Bilan Engineering Ultimate v17</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align:center; color:white;'>إشراف المهندس: بيلان عبد الكريم</h3>", unsafe_allow_html=True)
 
-# 2. المدخلات في القائمة الجانبية
+# 2. القائمة الجانبية للمدخلات
 with st.sidebar:
     st.header("📋 مدخلات المشروع")
     type_choice = st.selectbox("العنصر الإنشائي:", ["جائز (Beam)", "بلاطة مصمتة", "بلاطة هوردي"])
@@ -41,24 +41,21 @@ with st.sidebar:
     fcu = st.number_input("fcu (kg/cm2):", 150, 500, 250)
     fy = st.number_input("fy (kg/cm2):", 2400, 5000, 4000)
 
-# 3. المحرك الحسابي والرسوم البيانية
+# 3. المحرك الحسابي
 d = h - 5
 # تحديد المعاملات بناء على المساند
 if "بسيط" in support:
     m_c, v_c = 0.125, 0.5
-    
 elif "وثاقة" in support:
     m_c, v_c = 1/12, 0.5
-    
 else:
     m_c, v_c = 0.5, 1.0
-    
 
 Mu = wu * (L**2) * m_c
 Vu = wu * L * v_c
 As = (abs(Mu) * 10**5) / (0.87 * fy * d)
 
-# حساب عدد القضبان (الفرش)
+# حساب عدد القضبان
 area_bar = (np.pi * (phi/10)**2) / 4
 n_bars = int(np.ceil(As / area_bar))
 
@@ -88,19 +85,24 @@ with col1:
     ax[1].plot(x, v_p, color='lime', lw=2); ax[1].fill_between(x, v_p, color='lime', alpha=0.2); ax[1].set_title("Shear (V)")
     st.pyplot(fig)
     st.markdown("</div>", unsafe_allow_html=True)
-    
 
 with col2:
+    st.subheader("📍 وضعية المساند")
+    if "بسيط" in support:
+        
+    elif "وثاقة" in support:
+        
+    else:
+        
+
+    st.divider()
     st.subheader("🎨 مخطط التسليح التوضيحي")
     if "جائز" in type_choice:
         
-        st.info(f"تسليح الجائز: {max(n_bars, 2)} T{phi}")
     elif "مصمتة" in type_choice:
         
-        st.info(f"فرش البلاطة: {max(n_bars, 2)} T{phi} / m")
     else:
         
-        st.info(f"تسليح العصب: {max(n_bars, 2)} T{phi}")
 
 st.divider()
-st.write("✅ **Bilan Engineering Suite - م. بيلان عبد الكريم**")
+st.write("✅ **Bilan Engineering Suite - المصمم الإنشائي المهندس بيلان عبد الكريم**")
