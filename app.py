@@ -5,143 +5,108 @@ import numpy as np
 import math
 
 # --- إعدادات الصفحة ---
-st.set_page_config(page_title="المصمم الإنشائي المتكامل v8.0", layout="wide")
+st.set_page_config(page_title="المصمم الإنشائي - تحديث فوري", layout="wide")
 
-# --- دالة الطباعة (تعديل لضمان العمل بنسبة 100%) ---
+# --- دالة الطباعة ---
 def add_print_button():
     st.markdown("""
         <style>
-        @media print {
-            .stButton, .stSelectbox, .stNumberInput, .sidebar, .stRadio, .stTabs, .stHeader, header, .stMarkdown button { 
-                display: none !important; 
-            }
-            .main { width: 100% !important; }
-            .block-container { padding: 1rem !important; }
-        }
+        @media print { .stButton, .stSelectbox, .stNumberInput, .sidebar, header { display: none !important; } }
         </style>
-        <button onclick="window.print()" style="
-            background-color: #1565c0; color: white; padding: 14px 28px;
-            border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; font-size: 18px;">
-            🖨️ طباعة المخطط الهندسي والتقرير
+        <button onclick="window.print()" style="background-color: #007bff; color: white; padding: 10px; border-radius: 5px; width: 100%; border: none; cursor: pointer;">
+            🖨️ طباعة النتائج / حفظ PDF
         </button>
     """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية: محرك الأحمال والمواد ---
+# --- القائمة الجانبية ---
 with st.sidebar:
-    st.header("⚖️ حساب الأحمال (Loading)")
-    dead_load = st.number_input("الحمولة الميتة DL (kg/m2)", value=250)
-    live_load = st.number_input("الحمولة الحية LL (kg/m2)", value=200)
+    st.header("📋 اختيار العنصر")
+    choice = st.radio("العنصر المراد تصميمه:", ["البلاطات (Slabs)", "الجوائز (Beams)", "الأساسات (Footings)"])
     st.divider()
-    st.header("⚙️ معطيات المواد")
-    fcu = st.number_input("fcu (MPa)", value=25)
-    fy = st.number_input("fy (MPa)", value=400)
+    st.header("⚖️ أحمال عامة")
+    dl = st.number_input("الحمل الميت (kg/m2)", value=250)
+    ll = st.number_input("الحمل الحي (kg/m2)", value=200)
     st.divider()
     add_print_button()
 
-menu = ["البلاطات (Slabs)", "الجوائز (Beams)", "الأساسات (Footings)", "الأعمدة (Columns)"]
-choice = st.selectbox("🎯 اختر العنصر المراد تصميمه:", menu)
-
 # ---------------------------------------------------------
-# 1. قسم البلاطات (تركيز على الهوردي والتفاصيل)
+# 1. تصميم البلاطات الهوردي (Ribbed Slab)
 # ---------------------------------------------------------
 if choice == "البلاطات (Slabs)":
-    st.header("🧱 تفاصيل البلاطات الهوردي (Ribbed Slab)")
+    st.header("🧱 تصميم وتفاصيل البلاطة الهوردي")
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        b_rib = st.number_input("عرض العصب b (cm)", value=12)
-        h_total = st.number_input("السماكة الكلية h (cm)", value=30)
-    with col2:
-        b_block = st.number_input("عرض البلوك (cm)", value=40)
-        h_block = st.number_input("ارتفاع البلوك (cm)", value=24)
-    with col3:
+    # تقسيم الشاشة: معطيات على اليمين ورسم على اليسار
+    col_in, col_res = st.columns([1, 2])
+    
+    with col_in:
+        st.subheader("📝 المعطيات")
+        b_rib = st.number_input("عرض العصب b (cm)", value=12, step=1)
+        b_block = st.number_input("عرض البلوك (cm)", value=40, step=1)
+        h_total = st.number_input("السماكة الكلية h (cm)", value=30, step=1)
+        h_block = st.number_input("ارتفاع البلوك (cm)", value=24, step=1)
         rib_bar = st.selectbox("قطر حديد العصب", [12, 14, 16], index=1)
-        L_span = st.number_input("طول مجاز العصب (m)", value=5.0)
-
-    if st.button("تحديث الرسم الهندسي وحصر الكميات"):
-        # حسابات الأحمال
-        spacing_m = (b_rib + b_block) / 100
-        wu_slab = (1.4 * (dead_load + (h_total/100 * 2500)) + 1.6 * live_load) / 1000 # t/m2
-        wu_rib = wu_slab * spacing_m # t/m'
         
-        # الرسم الهندسي للمقطع
-        st.subheader("📐 المقطع العرضي الإنشائي (Cross Section)")
+    with col_res:
+        # حسابات فورية
+        spacing = b_rib + b_block
+        wu = (1.4 * (dl + (h_total/100 * 2500)) + 1.6 * ll) / 1000 # t/m2
+        wu_rib = wu * (spacing / 100) # t/m'
         
-        fig, ax = plt.subplots(figsize=(12, 4))
-        # الخرسانة الأساسية
-        ax.add_patch(patches.Rectangle((0, 0), 3*(b_rib+b_block), h_total, color='#eeeeee', ec='black', lw=2))
+        st.subheader("📐 المقطع العرضي وتوزيع الأعصاب")
         
+        fig, ax = plt.subplots(figsize=(10, 4))
+        # رسم الخرسانة والبلوكات
+        ax.add_patch(patches.Rectangle((0, 0), 3*spacing, h_total, color='#f5f5f5', ec='black', lw=2))
         for i in range(3):
-            x_s = i * (b_rib + b_block) + b_rib
-            # رسم البلوك
-            ax.add_patch(patches.Rectangle((x_s, 0), b_block, h_block, color='white', ec='black', hatch='//'))
-            ax.text(x_s + b_block/2, h_block/2, f"Block\n{b_block}x{h_block}", ha='center', fontsize=8)
-            # رسم حديد التسليح
-            ax.add_patch(patches.Circle((i*(b_rib+b_block) + b_rib/2, 5), 1.2, color='red'))
-            ax.add_patch(patches.Circle((i*(b_rib+b_block) + b_rib/2, 10), 1.2, color='red'))
-
-        # خطوط الأبعاد
-        ax.annotate('', xy=(b_rib/2, h_total+4), xytext=((b_rib+b_block)+b_rib/2, h_total+4), arrowprops=dict(arrowstyle='<->'))
-        ax.text((b_rib+b_block)/2 + b_rib/2, h_total+6, f"S = {b_rib+b_block} cm (c/c)", ha='center', fontweight='bold')
+            x_s = i * spacing + b_rib
+            ax.add_patch(patches.Rectangle((x_s, 0), b_block, h_block, color='white', ec='black', hatch='///'))
+            ax.add_patch(patches.Circle((i*spacing + b_rib/2, 5), 1.2, color='red')) # حديد سفلي
         
-        ax.set_xlim(-5, 3*(b_rib+b_block)+5); ax.set_ylim(-15, h_total+15); ax.axis('off')
+        # خط البعد (تباعد المحاور)
+        ax.annotate('', xy=(b_rib/2, h_total+3), xytext=(spacing+b_rib/2, h_total+3), arrowprops=dict(arrowstyle='<->'))
+        ax.text(spacing/2 + b_rib/2, h_total+5, f"S = {spacing} cm", ha='center', fontweight='bold')
+        
+        ax.set_xlim(-5, 3*spacing+5); ax.set_ylim(-10, h_total+15); ax.axis('off')
         st.pyplot(fig)
 
-        # جدول الكميات والنتائج
-        st.subheader("📊 حصر الكميات والنتائج (لكل 100 متر مربع)")
-        area_100 = 100
-        n_blocks = (area_100 / (spacing_m * 0.2)) # طول البلوك 20سم
-        conc_vol = (area_100 * h_total/100) - (n_blocks * (b_block/100 * h_block/100 * 0.2))
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("عدد البلوك المطلوبة", f"{int(n_blocks)} بلوكة")
-        c2.metric("حجم الخرسانة", f"{conc_vol:.2f} m³")
-        c3.metric("حمل العصب التصميمي", f"{wu_rib:.2f} t/m")
-
+        # جداول النتائج
         st.table({
-            "المعلمة": ["تباعد المحاور (S)", "تسليح العصب", "عزم العصب (M_max)", "سمك بلاطة التغطية"],
-            "القيمة": [f"{b_rib + b_block} cm", f"2 T{rib_bar}", f"{(wu_rib * L_span**2 / 8):.2f} t.m", f"{h_total - h_block} cm"]
+            "المعلمة": ["حمل العصب (wu)", "تباعد المحاور (c/c)", "حجم الخرسانة / 100m²", "عدد البلوك / 100m²"],
+            "القيمة": [f"{wu_rib:.2f} t/m", f"{spacing} cm", f"{(100*h_total/100 - (100/(spacing/100*0.2) * b_block/100*h_block/100*0.2)):.2f} m³", f"{int(100/(spacing/100*0.2))} بلوكة"]
         })
 
 # ---------------------------------------------------------
-# 2. قسم الأساسات (Footings)
+# 2. تصميم الأساسات (Footings)
 # ---------------------------------------------------------
 elif choice == "الأساسات (Footings)":
-    st.header("📐 تصميم الأساسات المنفردة والمشتركة")
+    st.header("📐 تصميم الأساسات المنفردة")
+    c_in, c_res = st.columns([1, 2])
     
-    f_type = st.radio("نوع الأساس", ["منفرد Isolated", "مشترك Combined"])
-    col1, col2 = st.columns(2)
-    with col1:
-        P_val = st.number_input("حمل العمود (Ton)", value=120.0)
-        q_soil = st.number_input("تحمل التربة (kg/cm2)", value=2.0)
-    with col2:
+    with c_in:
+        P = st.number_input("حمل العمود (Ton)", value=120.0)
+        q = st.number_input("تحمل التربة (kg/cm2)", value=2.0)
         f_bar = st.selectbox("قطر الحديد", [14, 16, 18], index=1)
-        f_thick = st.number_input("سماكة القاعدة (cm)", value=60)
-
-    if st.button("عرض المخطط الإنشائي"):
-        area = (P_val * 1.1) / (q_soil * 10)
+        
+    with c_res:
+        area = (P * 1.1) / (q * 10)
         side = math.sqrt(area)
         
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax.add_patch(patches.Rectangle((0, 0), side, side, color='#e0e0e0', ec='black', lw=2))
-        # رسم شبكة الحديد
+        st.subheader("🖼️ المسقط الأفقي للقاعدة")
+        
+        fig2, ax2 = plt.subplots(figsize=(6, 6))
+        ax2.add_patch(patches.Rectangle((0, 0), side, side, color='#eeeeee', ec='black', lw=2))
         for i in np.linspace(0.15, side-0.15, 10):
-            ax.plot([i, i], [0.1, side-0.1], 'red', lw=1.5, alpha=0.6)
-            ax.plot([0.1, side-0.1], [i, i], 'red', lw=1.5, alpha=0.6)
-        ax.set_title(f"Plan View: {side:.2f} x {side:.2f} m", pad=20)
-        ax.axis('off'); st.pyplot(fig)
+            ax2.plot([i, i], [0.1, side-0.1], 'red', lw=1.5, alpha=0.6)
+            ax2.plot([0.1, side-0.1], [i, i], 'red', lw=1.5, alpha=0.6)
+        ax2.set_title(f"Plan: {side:.2f} x {side:.2f} m")
+        ax2.axis('off'); st.pyplot(fig2)
         
-        st.table({"المواصفات": ["الأبعاد", "التسليح", "الخرسانة"], "النتائج": [f"{side:.2f} m", f"T{f_bar} @ 15cm", f"{area * f_thick/100:.2f} m³"]})
+        st.success(f"الأبعاد المطلوبة: {side:.2f} m | الحديد: T{f_bar} @ 15cm")
 
 # ---------------------------------------------------------
-# 3. الجوائز والأعمدة (تكملة بنفس الفلسفة)
+# 3. الجوائز (Beams)
 # ---------------------------------------------------------
-else:
-    st.info("أدخل المعطيات في القائمة الجانبية لتحديث الأحمال، ثم اضغط على زر العرض.")
-    if choice == "الجوائز (Beams)":
-        
-        st.write("تفاصيل الجوائز تظهر هنا مع توزيع الكانات.")
-    else:
-        
-        st.write("تفاصيل الأعمدة تظهر هنا مع جداول BBS.")
-
+elif choice == "الجوائز (Beams)":
+    st.header("🔗 تصميم الجوائز")
+    
+    st.info("قم بتعديل المعطيات في القائمة الجانبية والأقسام لتحديث الرسوم.")
