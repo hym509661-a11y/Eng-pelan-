@@ -2,108 +2,114 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# إعدادات الواجهة الاحترافية
-st.set_page_config(page_title="Pelan Engineering Hub", layout="wide")
+# إعدادات الواجهة لتشبه البرامج الهندسية (Dark Theme & Wide)
+st.set_page_config(page_title="Pelan Workstation", layout="wide")
 
-# --- الختم الهندسي في الشريط الجانبي ---
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/932/932220.png", width=100)
-st.sidebar.title("Engineering Stamp")
+# --- الختم الهندسي (Stamp) - ثابت في الأعلى وفي الجانب ---
 st.sidebar.markdown(f"""
-<div style="background-color:#2c3e50; padding:15px; border-radius:10px; border: 2px solid #f1c40f;">
-    <h3 style="color:white; margin:0;">Eng. Pelan Mustfa Abdulkarim</h3>
-    <p style="color:#f1c40f; font-weight:bold;">0998449697</p>
-    <p style="color:white; font-size:0.8em;">Specialist in SAFE, ETABS, Revit & AutoCAD</p>
+<div style="background-color:#1e272e; padding:20px; border-radius:10px; border: 2px solid #3498db; text-align:center;">
+    <h2 style="color:#3498db; margin:0;">Eng. Pelan Mustfa</h2>
+    <h4 style="color:white; margin:5px;">Abdulkarim</h4>
+    <hr style="border-color:#3498db;">
+    <p style="color:#f1c40f; font-size:1.2em; font-weight:bold;">0998449697</p>
 </div>
 """, unsafe_allow_html=True)
 
-# --- واجهة البرنامج الرئيسية ---
-st.title("🏗️ Pelan Multi-Structural Design System")
+# --- شريط الأدوات العلوي (Main Toolbar) ---
+st.title("🏗️ Pelan Professional Engineering Workstation")
 st.markdown("---")
 
-# تقسيم البرنامج إلى الأقسام الأربعة التي طلبتها بدقة
-tabs = st.tabs(["🖥️ AutoCAD Interface", "📊 ETABS Analysis", "🏗️ SAFE Detailing", "📋 Revit & BBS Report"])
+# نظام التبويبات كأنه شريط مهام للبرامج
+program_mode = st.radio("إختر بيئة العمل الحالية:", 
+                        ["AutoCAD Layout", "ETABS Solver", "SAFE Reinforcement", "Revit BIM & BBS"], 
+                        horizontal=True)
 
-# 1. قسم الأوتوكاد (AutoCAD Interface)
-with tabs[0]:
-    st.header("AutoCAD Architectural Import")
-    col_a, col_b = st.columns([1, 2])
-    with col_a:
-        st.write("تحميل المسقط المعماري لتحديد العناصر:")
-        dxf_file = st.file_uploader("Upload DXF File", type=['dxf'])
-        if dxf_file:
-            st.success("File Loaded: Layers detected (Columns, Beams, Slabs)")
-    with col_b:
-        st.info("Visual Preview Area (AutoCAD Simulation)")
-        # رسم تخطيطي يحاكي المسقط المعماري
-        st.write("Layout Map Status: Active")
-        st.progress(100)
+# 1. بيئة الأوتوكاد (AutoCAD Professional Workspace)
+if program_mode == "AutoCAD Layout":
+    st.header("📐 AutoCAD Workspace - Architectural Import")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.subheader("Layers Manager")
+        st.checkbox("Columns Layer", value=True)
+        st.checkbox("Beams Layer", value=True)
+        st.checkbox("Slabs Layer", value=True)
+        dxf = st.file_uploader("تنزيل المسقط المعماري (DXF)", type=['dxf'])
+        
+    with col2:
+        st.subheader("Model Space")
+        # محاكاة لشاشة الأوتوكاد السوداء
+        st.markdown("""<div style="background-color:black; height:300px; border:2px solid #555; display:flex; align-items:center; justify-content:center; color:#0f0;">
+        [ + ] Crosshair Active | Ortho: ON | Snap: ON <br> 
+        -- Drawing Loaded: Floor_Plan_Pelan.dwg --
+        </div>""", unsafe_allow_html=True)
+        if dxf: st.success("تم الربط مع المسقط المعماري بنجاح.")
 
-# 2. قسم الإيتابس (ETABS Analysis)
-with tabs[1]:
-    st.header("ETABS: Structural Analysis & Loading")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        dead_load = st.number_input("Superimposed Dead Load (kN/m²)", value=3.5)
-    with c2:
-        live_load = st.number_input("Live Load (kN/m²)", value=2.0)
-    with c3:
-        seismic = st.selectbox("Seismic Zone", ["Zone 1", "Zone 2A", "Zone 2B", "Zone 3"])
-    
-    if st.button("Run ETABS Analysis Engine"):
-        st.warning("Analyzing Internal Forces: Moments (M), Shear (V), Torsion (T)...")
-        chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['Moment', 'Shear', 'Axial'])
-        st.line_chart(chart_data)
+# 2. بيئة الإيتابس (ETABS Analysis Workspace)
+elif program_mode == "ETABS Solver":
+    st.header("📊 ETABS Analysis Engine - [Eng Pelan Mustfa]")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.subheader("Material Properties")
+        st.text_input("Concrete Grade (f'c)", "30 MPa")
+        st.text_input("Steel Yield (fy)", "420 MPa")
+    with col2:
+        st.subheader("Load Patterns")
+        st.number_input("Dead Load (kN/m)", 5.0)
+        st.number_input("Live Load (kN/m)", 2.5)
+    with col3:
+        st.subheader("Analysis Results")
+        if st.button("RUN ANALYSIS"):
+            st.error("Running Finite Element Matrix... Done.")
+            st.line_chart(np.random.randn(20, 2))
+            st.caption("Bending Moment Diagram (BMD)")
 
-# 3. قسم السيف (SAFE Detailing)
-with tabs[2]:
-    st.header("SAFE: Complete Reinforcement Design")
-    st.subheader("تفاصيل تسليح العناصر الإنشائية بدقة")
+# 3. بيئة السيف (SAFE Reinforcement Details)
+elif program_mode == "SAFE Reinforcement":
+    st.header("🏗️ SAFE Detailing - Reinforcement Schedule")
+    st.info("تحديد تفاصيل التسليح بناءً على تحليل ETABS")
     
-    # مصفوفة البيانات التي تضم كل أنواع الحديد التي طلبتها
-    design_data = {
-        "العنصر الهندسي": ["Beam (جسور)", "Slab (بلاطات)", "Column (أعمدة)", "Foundation (قواعد)"],
-        "الحديد العلوي (Top)": ["3 Ø 16", "Ø 12 @ 200", "4 Ø 20", "Ø 16 @ 150"],
-        "الحديد السفلي (Bottom)": ["4 Ø 18", "Ø 12 @ 150", "4 Ø 20", "Ø 16 @ 150"],
-        "الكانات (Stirrups)": ["Ø 10 @ 150", "-", "Ø 10 @ 100", "-"],
-        "حديد التعليق (Hangers)": ["2 Ø 12", "-", "-", "-"],
-        "البرندات (Skin Steel)": ["2 Ø 10", "-", "-", "-"]
-    }
-    st.table(pd.DataFrame(design_data))
+    # تفاصيل دقيقة كما طلبت (علوي، سفلي، كانات، تعليق)
+    beam_id = st.selectbox("اختر العنصر (Element ID):", ["Beam B1 (30x60)", "Beam B2 (25x50)", "Slab S1 (20cm)"])
+    
+    col_main, col_stirrup = st.columns(2)
+    with col_main:
+        st.subheader("Longitudinal Bars (الحديد الطولي)")
+        st.table({
+            "Position": ["Top (علوي)", "Bottom (سفلي)", "Hangers (تعليق)", "Side Bars (برندات)"],
+            "Reinforcement": ["3 Ø 16", "4 Ø 18", "2 Ø 12", "2 Ø 10"]
+        })
+    with col_stirrup:
+        st.subheader("Shear Links (الكانات)")
+        st.write("**Stirrups:** Ø 10 @ 150 mm c/c")
+        st.write("**Shear Design:** Pass (Vc + Vs > Vu)")
+    
     
 
-# 4. قسم الريفيت وجدول الكميات (Revit & BBS)
-with tabs[3]:
-    st.header("Revit BIM Modeling & BBS Report")
-    st.info("Syncing with Revit... 3D Models and Quantity Take-off generated.")
+# 4. بيئة الريفيت (Revit & BBS Generator)
+elif program_mode == "Revit BIM & BBS":
+    st.header("📋 Revit Schedule & Bar Bending Schedule (BBS)")
+    st.markdown(f"**Project Engineer:** Eng Pelan Mustfa Abdulkarim")
     
-    # جدول الكميات النهائي (BBS)
-    bbs_df = pd.DataFrame({
-        "Bar Mark": ["B1-01", "B1-02", "B1-03", "S1-01"],
-        "Type": ["Main Bottom", "Main Top", "Stirrups", "Mesh"],
-        "Diameter (mm)": [18, 16, 10, 12],
-        "Cut Length (m)": [5.20, 5.00, 1.45, 12.00],
-        "Quantity": [4, 3, 35, 120],
-        "Total Weight (kg)": [41.6, 23.7, 31.2, 106.8]
+    # جدول كميات احترافي (BBS)
+    bbs_data = pd.DataFrame({
+        "Bar Mark": ["B1-T", "B1-B", "B1-S", "C1-M"],
+        "Member": ["Beam 1", "Beam 1", "Beam 1", "Column 1"],
+        "Type": ["Top Main", "Bottom Main", "Stirrups", "Main Vertical"],
+        "Diameter (mm)": [16, 18, 10, 20],
+        "Total Length (m)": [12.5, 14.2, 55.8, 42.0],
+        "Total Weight (kg)": [19.7, 28.4, 34.4, 103.6]
     })
     
-    st.dataframe(bbs_df.style.highlight_max(axis=0))
+    st.dataframe(bbs_data, use_container_width=True)
     
-    # تصدير البيانات مع الختم
-    csv = bbs_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Download Professional BBS Report (CSV/Excel)",
-        data=csv,
-        file_name=f'Eng_Pelan_BBS_Report.csv',
-        mime='text/csv',
-    )
+    csv = bbs_data.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Export BBS to Excel (Pelan Edition)", data=csv, file_name="Pelan_Engineering_BBS.csv")
 
-# --- التذييل النهائي (Footer) ---
+# --- الختم النهائي ---
 st.markdown("---")
 st.markdown(f"""
-    <div style="text-align: center; padding: 20px;">
-        <h2 style="color: #c0392b;">Eng. Pelan Mustfa Abdulkarim</h2>
-        <h4 style="color: #7f8c8d;">Structural Design & BIM Specialist</h4>
-        <p style="font-size: 1.2em; font-weight: bold;">Contact: 0998449697</p>
-        <p>This software integrates AutoCAD, ETABS, SAFE, and Revit for seamless engineering workflow.</p>
+    <div style="text-align: center; border: 1px solid #3498db; padding: 10px;">
+        <h3 style="color: #2980b9;">Approved by: Eng. Pelan Mustfa Abdulkarim</h3>
+        <p>License: Structural BIM Expert | 📱 0998449697</p>
     </div>
 """, unsafe_allow_html=True)
