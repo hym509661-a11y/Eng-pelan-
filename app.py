@@ -1,95 +1,56 @@
-import streamlit as st
-import numpy as np
-import pandas as pd
-import ezdxf  # مكتبة توليد ملفات الأوتوكاد
-import io
 
-# 1. التنسيق السينمائي الفاخر (Cinematic Gold UI)
-st.set_page_config(page_title="Pelan Grand Master v31", layout="wide")
+استيراد  streamlit  كـ  st
+استيراد  math
 
-st.markdown("""
-    <style>
-    .stApp { background: #050505; color: #d4af37; } /* خلفية سوداء مع خط ذهبي */
-    .master-card {
-        background: rgba(212, 175, 55, 0.05);
-        border: 1px solid #d4af37;
-        border-radius: 15px;
-        padding: 25px;
-        box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
-    }
-    .price-tag { color: #a8eb12; font-size: 1.5rem; font-weight: bold; }
-    </style>
-""", unsafe_allow_html=True)
+# --- محرك هندسي (معايير الكود السوري) -- دالة
+حساب_البلاطة ( L , w_live  , fcu  , fy  , t_cm  , finish  , walls  ) :
+    gamma_concrete =  2.5
+    dead_load = (t_cm/ 100  * gamma_concrete) + (finishing/ 1000 ) + (walls/ 1000 )
+    live_load = w_live /  1000
 
-st.markdown("<div class='master-card' style='text-align:center;'><h1 style='color:#d4af37;'>Pelan Grand Master v31</h1><p>الذكاء الهندسي، التكلفة المالية، وتوليد المخططات | م. بيلان عبد الكريم</p></div>", unsafe_allow_html=True)
+    # الحمل الأقصى: 1.4DL + 1.7LL
+    wu =  1.4  * الحمل الميت +  1.7  * الحمل الحي
 
-# 2. لوحة التحكم (The Engine)
-with st.sidebar:
-    st.header("💎 لوحة التحكم العليا")
-    task = st.selectbox("المهمة الحالية:", ["تحليل وتصميم شامل", "حساب التكلفة التقديرية", "توليد ملفات AutoCAD"])
-    
-    st.divider()
-    st.subheader("💰 أسعار السوق الحالية")
-    conc_price = st.number_input("سعر م3 البيتون ($):", 50, 200, 110)
-    steel_price = st.number_input("سعر طن الحديد ($):", 500, 1500, 950)
-    
-    st.divider()
-    L = st.slider("طول البحر L (m):", 1.0, 15.0, 6.0)
-    B = st.number_input("العرض B (cm):", 20, 100, 30)
-    h = st.number_input("الارتفاع h (cm):", 20, 150, 60)
-    wu = st.number_input("الحمل Wu (t/m):", 0.5, 50.0, 3.5)
+    # عزم الانحناء وقوة القص لشريط طوله متر واحد
+    Mu = (wu * L** 2 ) /  8
+    Vu = (wu * L) /  2
 
-# 3. محرك الحسابات المزدوج (AI + Cost + Design)
-d = h - 5
-Mu = (wu * L**2) / 8
-As = (Mu * 10**5) / (0.87 * 4000 * d)
-vol_conc = (B/100) * (h/100) * L
-weight_steel = As * L * 100 * 0.000785 * 10 # بالطن تقريباً
+    # حساب التسليح
+    d = (t_cm -  2.5 ) *  10
+    bw =  1000
+    Rn = (Mu *  10 ** 7 ) / (bw * d** 2 )
+    m = fy / ( 0.85  * fcu)
 
-# حساب التكلفة
-total_cost = (vol_conc * conc_price) + (weight_steel * steel_price)
+    إذا كان  ( 1  - ( 2  * m * Rn / fy)) <  0 : أرجع "السماكة صغيرة جدًا! يرجى زيادة سماكة البلاطة ."
+        
 
-# 4. عرض النتائج المتكاملة
-col1, col2 = st.columns([1.2, 1])
+    ρ = ( 1 /m) * ( 1  - جذر( 1  - ( 2  * m * Rn / fy)))
+    As_req = ρ * bw * d
+    As_min =  0.0018  * bw * (t_cm *  10 )
+    As_final =  max (As_req, As_min)
 
-with col1:
-    st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader("📑 المذكرة الفنية والمالية")
-    
-    res1, res2 = st.columns(2)
-    res1.write(f"**العزم:** {Mu:.2f} t.m")
-    res1.write(f"**حديد التسليح:** {As:.2f} cm²")
-    
-    res2.markdown(f"**تكلفة المواد التقديرية:**")
-    res2.markdown(f"<span class='price-tag'>${total_cost:.2f}</span>", unsafe_allow_html=True)
-    
-    st.divider()
-    st.write("🤖 **اقتراح AI:** النظام الإنشائي المختار اقتصادي جداً لهذه البحور.")
-    st.markdown("</div>", unsafe_allow_html=True)
+    إرجاع  { "wu" : wu،  "Mu" : Mu،  "Vu" : Vu،  "As" : As_final /  100 }
 
-with col2:
-    st.markdown("<div class='master-card'>", unsafe_allow_html=True)
-    st.subheader("⚙️ توليد مخططات AutoCAD")
-    
-    if st.button("توليد ملف DXF للجائز"):
-        # برمجة ملف AutoCAD آلياً
-        doc = ezdxf.new(setup=True)
-        msp = doc.modelspace()
-        # رسم مستطيل الجائز
-        msp.add_lwpolyline([(0, 0), (L*100, 0), (L*100, h), (0, h), (0, 0)])
-        # رسم أسياخ التسليح
-        msp.add_line((5, 5), (L*100 - 5, 5), dxfattribs={'color': 1}) # حديد سفلي
-        
-        # حفظ الملف في ذاكرة مؤقتة
-        out = io.StringIO()
-        doc.write(out)
-        st.download_button("📥 تحميل ملف AutoCAD (DXF)", data=out.getvalue(), file_name="Pelan_Design.dxf")
-        st.success("تم تجهيز ملف DXF بنجاح!")
+# --- UI Layout ---
+st.set_page_config(page_title= "Slab Designer" , Layout= "wide" )
+st.title( "🏗️ تصميم الزجاجات - الكود السوري" )
 
-    
-    st.caption("تفريد الحديد كما سيظهر في ملف AutoCAD")
-    st.markdown("</div>", unsafe_allow_html=True)
+مع  st.sidebar:
+    st.header( "المواد والأحمال" )
+    fcu = st.number_input( "fcu (MPa)" , value= 25 )
+    fy = st.number_input( "fy (MPa)" , value= 400 )
+    finishing = st.number_input( "Finishing (kg/m2)" , value= 150 )
+    walls = st.number_input( "Walls (kg/m2)" , value= 100 )
+    w_live = st.selectbox( "Live Load (kg/m2)" , [ 200 ,  300 ,  500 ])
 
-# 5. التذييل
-st.divider()
-st.markdown("<p style='text-align:center;'>Pelan Grand Master v31 | All-in-One Engineering Intelligence | م. بيلان عبد الكريم © 2026</p>", unsafe_allow_html=True)
+L = st.number_input( "طول الامتداد L (م)" , value= 4.0 )
+t_cm = st.number_input( "السماكة h (سم)" , value= 15 )
+
+إذا  تم الضغط على زر "حساب" :
+    يتم حساب قيمة res باستخدام الدالة calculate_slab(L, w_live, fcu, fy, t_cm,  finish, walls). إذا كانت res  من نوع str : يتم استدعاء الدالة         st.error(res). وإلا : يتم استدعاء الدالة         st.success( f "الحمل الأقصى:  {res[ 'wu' ] : 0.2f }  طن/م²" )، ويتم استدعاء         الدالة st.info( f "كمية الفولاذ المطلوبة:  {res[ 'As' ] : 0.2f }  سم²/م" )،         ويتم حساب التباعد ( 1.13  *  100 ) / res[ 'As' ]، ويتم         استدعاء الدالة st.warning( f "التوصية: T12 كل  { min ( int (spacing),  20 )}  سم" ).
+    
+
+    
+
+
+
