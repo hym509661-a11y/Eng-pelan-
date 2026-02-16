@@ -4,61 +4,97 @@ from ezdxf import units
 import io
 
 # إعدادات الصفحة
-st.set_page_config(page_title="المصمم الإنشائي الذكي", layout="wide")
+st.set_page_config(page_title="المصمم الإنشائي المتكامل", layout="wide")
 
-st.title("تطبيق التصميم الإنشائي وتصدير DXF")
-st.write("تم ضبط الكود ليشمل كافة العناصر الإنشائية والختم المطلوب.")
+st.title("تطبيق التفاصيل الإنشائية (DXF)")
+st.write("تم دمج الرقم 0998449697 في الختم النهائي للمخططات.")
 
-# مدخلات المستخدم للعناصر الإنشائية
+# تقسيم المدخلات في القائمة الجانبية
 with st.sidebar:
-    st.header("بيانات المشروع")
-    project_name = st.text_input("اسم المشروع", "مخطط إنشائي سكني")
-    beam_length = st.number_input("طول الجسر (m)", value=5.0)
-    column_width = st.number_input("عرض العمود (cm)", value=30)
+    st.header("🏗️ مدخلات العناصر الإنشائية")
     
-    st.divider()
-    st.info("سيتم إضافة الرقم 0998449697 تلقائياً للختم.")
+    with st.expander("بيانات الجسر (Beam)"):
+        b_length = st.number_input("طول الجسر (m)", value=5.0)
+        b_depth = st.number_input("عمق الجسر (cm)", value=60)
+        b_width = st.number_input("عرض الجسر (cm)", value=25)
+        cover = st.number_input("الغطاء الخرساني (cm)", value=2.5)
 
-# دالة إنشاء ملف DXF
-def generate_dxf(p_name, b_len, c_width):
-    # إنشاء ملف جديد بتنسيق R2010
+    with st.expander("حديد التسليح (Reinforcement)"):
+        # السفلي
+        st.subheader("التسليح السفلي")
+        bot_bars_n = st.number_input("عدد القضبان السفلية", value=4)
+        bot_bars_d = st.selectbox("قطر السفلي (mm)", [12, 14, 16, 18, 20, 25], index=2)
+        
+        # العلوي والتعليق
+        st.subheader("التسليح العلوي/التعليق")
+        top_bars_n = st.number_input("عدد القضبان العلوية", value=2)
+        top_bars_d = st.selectbox("قطر العلوي (mm)", [10, 12, 14, 16], index=1)
+        
+        # الكانات
+        st.subheader("الكانات (Stirrups)")
+        stirrup_d = st.selectbox("قطر الكانة (mm)", [8, 10, 12], index=0)
+        stirrup_spacing = st.number_input("المسافة بين الكانات (cm)", value=15)
+
+    st.divider()
+    st.info("الختم المعتمد: 0998449697")
+
+# دالة الرسم التفصيلي
+def generate_detailed_dxf():
     doc = ezdxf.new('R2010', setup=True)
-    doc.header['$INSUNITS'] = units.M  # ضبط الوحدات للمتر
+    doc.header['$INSUNITS'] = units.M
     msp = doc.modelspace()
 
-    # 1. رسم العناصر الإنشائية (مثال: جسر وعمودين)
-    # رسم العمود الأول
-    c_m = c_width / 100
-    msp.add_lwpolyline([(0, 0), (c_m, 0), (c_m, c_m), (0, c_m)], close=True)
-    
-    # رسم الجسر
-    msp.add_line((c_m, c_m/2), (b_len + c_m, c_m/2))
-    
-    # رسم العمود الثاني
-    msp.add_lwpolyline([(b_len + c_m, 0), (b_len + 2*c_m, 0), (b_len + 2*c_m, c_m), (b_len + c_m, c_m)], close=True)
+    # تحويل الوحدات للمتر
+    L = b_length
+    D = b_depth / 100
+    W = b_width / 100
+    C = cover / 100
 
-    # 2. إضافة الختم (Stamp) في أسفل اللوحة
-    footer_text = f"مشروع: {p_name} | التدقيق الإنشائي: مهندس معتمد | تواصل: 0998449697"
-    msp.add_text(footer_text, 
-                 dxfattribs={'height': 0.2, 'color': 7}).set_placement((0, -0.5))
+    # 1. رسم حدود الجسر (Outer Frame)
+    msp.add_lwpolyline([(0, 0), (L, 0), (L, D), (0, D)], close=True, dxfattribs={'color': 7, 'lwweight': 30})
 
-    # حفظ الملف في ذاكرة مؤقتة
+    # 2. رسم حديد التسليح السفلي (Main Bottom Reinforcement)
+    # رسم خط يمثل الحديد السفلي مع ترك غطاء خرساني
+    msp.add_line((C, C), (L-C, C), dxfattribs={'color': 1, 'lwweight': 40})
+    msp.add_text(f"{bot_bars_n}T{bot_bars_d}", dxfattribs={'height': 0.1}).set_placement((L/2, C+0.05))
+
+    # 3. رسم حديد التعليق العلوي (Top Support Bars)
+    msp.add_line((C, D-C), (L-C, D-C), dxfattribs={'color': 1, 'lwweight': 40})
+    msp.add_text(f"{top_bars_n}T{top_bars_d}", dxfattribs={'height': 0.1}).set_placement((L/2, D-C-0.15))
+
+    # 4. رسم الكانات (Stirrups) - رسم عينات توضيحية
+    num_stirrups = int((L - 2*C) / (stirrup_spacing/100))
+    for i in range(min(num_stirrups + 1, 50)): # حد أقصى للرسم التوضيحي
+        x_pos = C + i * (stirrup_spacing/100)
+        if x_pos < L - C:
+            msp.add_line((x_pos, C), (x_pos, D-C), dxfattribs={'color': 3, 'linetype': 'DASHED'})
+
+    # 5. الختم والمعلومات (Stamp)
+    stamp_y = -0.5
+    msp.add_text(f"DETAILS: {bot_bars_n}T{bot_bars_d} BOT / {top_bars_n}T{top_bars_d} TOP", 
+                 dxfattribs={'height': 0.15}).set_placement((0, stamp_y))
+    
+    # السطر الخاص بك مع الرقم المطلوب
+    msp.add_text(f"Contact & Verification: 0998449697", 
+                 dxfattribs={'height': 0.15, 'color': 2}).set_placement((0, stamp_y - 0.2))
+
     out = io.StringIO()
     doc.write(out)
     return out.getvalue()
 
-# عرض النتائج
-if st.button("توليد المخطط الإنشائي"):
-    dxf_content = generate_dxf(project_name, beam_length, column_width)
-    
-    st.success("تم توليد المخطط بنجاح مع كافة العناصر والختم!")
-    
-    st.download_button(
-        label="تحميل ملف DXF",
-        data=dxf_content,
-        file_name="structural_plan.dxf",
-        mime="application/dxf"
-    )
+# واجهة التشغيل
+if st.button("توليد المخططات والرسومات التفصيلية"):
+    try:
+        dxf_file = generate_detailed_dxf()
+        st.success("تم إنشاء الرسومات التفصيلية بنجاح!")
+        st.download_button(
+            label="تحميل المخطط التفصيلي (DXF)",
+            data=dxf_file,
+            file_name="structural_details.dxf",
+            mime="application/dxf"
+        )
+    except Exception as e:
+        st.error(f"حدث خطأ أثناء التوليد: {e}")
 
 st.divider()
-st.caption("جميع الحقوق محفوظة - الرقم المعتمد في الختم: 0998449697")
+st.caption("التدقيق الإنشائي - الرقم المرفق بالختم: 0998449697")
