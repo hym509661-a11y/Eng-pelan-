@@ -2,99 +2,93 @@ import streamlit as st
 import ezdxf
 from ezdxf import units
 import io
+import math
 
 # إعدادات الصفحة
-st.set_page_config(page_title="المصمم الإنشائي المتكامل", layout="wide")
+st.set_page_config(page_title="المصمم الإنشائي الاحترافي", layout="wide")
 
-st.title("تطبيق التفاصيل الإنشائية (DXF)")
-st.write("تم دمج الرقم 0998449697 في الختم النهائي للمخططات.")
+def main():
+    st.title("🏗️ نظام التصميم الإنشائي المتكامل (DXF)")
+    st.write("حساب تلقائي للتسليح ورسم المقاطع التفصيلية.")
 
-# تقسيم المدخلات في القائمة الجانبية
-with st.sidebar:
-    st.header("🏗️ مدخلات العناصر الإنشائية")
-    
-    with st.expander("بيانات الجسر (Beam)"):
-        b_length = st.number_input("طول الجسر (m)", value=5.0)
-        b_depth = st.number_input("عمق الجسر (cm)", value=60)
-        b_width = st.number_input("عرض الجسر (cm)", value=25)
-        cover = st.number_input("الغطاء الخرساني (cm)", value=2.5)
-
-    with st.expander("حديد التسليح (Reinforcement)"):
-        # السفلي
-        st.subheader("التسليح السفلي")
-        bot_bars_n = st.number_input("عدد القضبان السفلية", value=4)
-        bot_bars_d = st.selectbox("قطر السفلي (mm)", [12, 14, 16, 18, 20, 25], index=2)
+    # القائمة الجانبية للمدخلات
+    with st.sidebar:
+        st.header("📋 معطيات التصميم")
+        L = st.number_input("طول الجسر (m)", value=5.0)
+        H = st.number_input("ارتفاع الجسر (cm)", value=60)
+        B = st.number_input("عرض الجسر (cm)", value=25)
         
-        # العلوي والتعليق
-        st.subheader("التسليح العلوي/التعليق")
-        top_bars_n = st.number_input("عدد القضبان العلوية", value=2)
-        top_bars_d = st.selectbox("قطر العلوي (mm)", [10, 12, 14, 16], index=1)
+        st.subheader("⚙️ الخصائص والمجهودات")
+        moment = st.number_input("العزم التصميمي (kN.m)", value=120.0)
+        fy = 420  # إجهاد خضوع الحديد
+        bar_dia = st.selectbox("قطر الحديد الرئيسي (mm)", [12, 14, 16, 18, 20, 25], index=2)
+        stirrup_dia = 8
+        cover = 2.5  # cm
+
+    # --- الحسابات الإنشائية التلقائية ---
+    d = H - cover - (bar_dia/20) - (stirrup_dia/10) # العمق الفعال
+    As_req = (moment * 10**6) / (0.9 * fy * d * 0.9) # مساحة الحديد mm2
+    bar_area = (math.pi * (bar_dia**2)) / 4
+    num_bars = math.ceil(As_req / bar_area)
+    if num_bars < 2: num_bars = 2
+
+    # عرض النتائج
+    c1, c2, c3 = st.columns(3)
+    c1.info(f"عدد القضبان السفلية: {num_bars}")
+    c2.info(f"الحديد العلوي (تعليق): 2 T 12")
+    c3.success(f"الختم: 0998449697")
+
+    def create_dxf():
+        doc = ezdxf.new('R2010', setup=True)
+        msp = doc.modelspace()
         
+        # تحويل الوحدات للمتر للرسم
+        Lm, Hm, Bm, Cm = L, H/100, B/100, cover/100
+        
+        # --- 1. المقطع الطولي (Longitudinal Section) ---
+        msp.add_lwpolyline([(0, 0), (Lm, 0), (Lm, Hm), (0, Hm)], close=True, dxfattribs={'color': 7})
+        # الحديد السفلي والعلوي
+        msp.add_line((Cm, Cm), (Lm-Cm, Cm), dxfattribs={'color': 1, 'lwweight': 35})
+        msp.add_line((Cm, Hm-Cm), (Lm-Cm, Hm-Cm), dxfattribs={'color': 1, 'lwweight': 35})
         # الكانات
-        st.subheader("الكانات (Stirrups)")
-        stirrup_d = st.selectbox("قطر الكانة (mm)", [8, 10, 12], index=0)
-        stirrup_spacing = st.number_input("المسافة بين الكانات (cm)", value=15)
+        for i in range(15):
+            x = Cm + i * ((Lm - 2*Cm)/14)
+            msp.add_line((x, Cm), (x, Hm-Cm), dxfattribs={'color': 3})
 
-    st.divider()
-    st.info("الختم المعتمد: 0998449697")
+        # --- 2. المقطع العرضي (Cross Section) ---
+        offset_x = Lm + 0.5 # إزاحة المقطع العرضي بجانب الطولي
+        msp.add_lwpolyline([(offset_x, 0), (offset_x+Bm, 0), (offset_x+Bm, Hm), (offset_x, Hm)], close=True)
+        # الكانة العرضية
+        msp.add_lwpolyline([(offset_x+0.03, 0.03), (offset_x+Bm-0.03, 0.03), 
+                            (offset_x+Bm-0.03, Hm-0.03), (offset_x+0.03, Hm-0.03)], close=True, dxfattribs={'color': 3})
+        
+        # رسم دوائر تمثل حديد التسليح (القضبان)
+        # السفلي
+        for i in range(num_bars):
+            spacing = (Bm - 2*0.04) / (num_bars - 1) if num_bars > 1 else 0
+            msp.add_circle((offset_x + 0.04 + i*spacing, 0.04), radius=0.01, dxfattribs={'color': 1})
+        # العلوي
+        msp.add_circle((offset_x + 0.04, Hm-0.04), radius=0.01, dxfattribs={'color': 1})
+        msp.add_circle((offset_x + Bm - 0.04, Hm-0.04), radius=0.01, dxfattribs={'color': 1})
 
-# دالة الرسم التفصيلي
-def generate_detailed_dxf():
-    doc = ezdxf.new('R2010', setup=True)
-    doc.header['$INSUNITS'] = units.M
-    msp = doc.modelspace()
+        # --- 3. الختم والنصوص ---
+        msp.add_text(f"LONGITUDINAL SECTION - B:{B}xH:{H}", dxfattribs={'height': 0.1}).set_placement((0, Hm+0.1))
+        msp.add_text(f"CROSS SECTION", dxfattribs={'height': 0.1}).set_placement((offset_x, Hm+0.1))
+        msp.add_text(f"REINFORCEMENT: {num_bars} T {bar_dia} (Bottom)", dxfattribs={'height': 0.08}).set_placement((0, -0.2))
+        
+        # الرقم المطلوب في الختم
+        msp.add_text(f"VERIFIED BY: 0998449697", dxfattribs={'height': 0.1, 'color': 2}).set_placement((0, -0.5))
 
-    # تحويل الوحدات للمتر
-    L = b_length
-    D = b_depth / 100
-    W = b_width / 100
-    C = cover / 100
+        out = io.StringIO()
+        doc.write(out)
+        return out.getvalue()
 
-    # 1. رسم حدود الجسر (Outer Frame)
-    msp.add_lwpolyline([(0, 0), (L, 0), (L, D), (0, D)], close=True, dxfattribs={'color': 7, 'lwweight': 30})
+    if st.button("توليد المخطط التفصيلي النهائي"):
+        dxf_data = create_dxf()
+        st.download_button("💾 تحميل ملف DXF المحدث", dxf_data, "Structural_Full_Detail.dxf")
 
-    # 2. رسم حديد التسليح السفلي (Main Bottom Reinforcement)
-    # رسم خط يمثل الحديد السفلي مع ترك غطاء خرساني
-    msp.add_line((C, C), (L-C, C), dxfattribs={'color': 1, 'lwweight': 40})
-    msp.add_text(f"{bot_bars_n}T{bot_bars_d}", dxfattribs={'height': 0.1}).set_placement((L/2, C+0.05))
+    st.markdown("---")
+    st.caption("جميع الحقوق محفوظة - التدقيق الإنشائي: 0998449697")
 
-    # 3. رسم حديد التعليق العلوي (Top Support Bars)
-    msp.add_line((C, D-C), (L-C, D-C), dxfattribs={'color': 1, 'lwweight': 40})
-    msp.add_text(f"{top_bars_n}T{top_bars_d}", dxfattribs={'height': 0.1}).set_placement((L/2, D-C-0.15))
-
-    # 4. رسم الكانات (Stirrups) - رسم عينات توضيحية
-    num_stirrups = int((L - 2*C) / (stirrup_spacing/100))
-    for i in range(min(num_stirrups + 1, 50)): # حد أقصى للرسم التوضيحي
-        x_pos = C + i * (stirrup_spacing/100)
-        if x_pos < L - C:
-            msp.add_line((x_pos, C), (x_pos, D-C), dxfattribs={'color': 3, 'linetype': 'DASHED'})
-
-    # 5. الختم والمعلومات (Stamp)
-    stamp_y = -0.5
-    msp.add_text(f"DETAILS: {bot_bars_n}T{bot_bars_d} BOT / {top_bars_n}T{top_bars_d} TOP", 
-                 dxfattribs={'height': 0.15}).set_placement((0, stamp_y))
-    
-    # السطر الخاص بك مع الرقم المطلوب
-    msp.add_text(f"Contact & Verification: 0998449697", 
-                 dxfattribs={'height': 0.15, 'color': 2}).set_placement((0, stamp_y - 0.2))
-
-    out = io.StringIO()
-    doc.write(out)
-    return out.getvalue()
-
-# واجهة التشغيل
-if st.button("توليد المخططات والرسومات التفصيلية"):
-    try:
-        dxf_file = generate_detailed_dxf()
-        st.success("تم إنشاء الرسومات التفصيلية بنجاح!")
-        st.download_button(
-            label="تحميل المخطط التفصيلي (DXF)",
-            data=dxf_file,
-            file_name="structural_details.dxf",
-            mime="application/dxf"
-        )
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء التوليد: {e}")
-
-st.divider()
-st.caption("التدقيق الإنشائي - الرقم المرفق بالختم: 0998449697")
+if __name__ == "__main__":
+    main()
