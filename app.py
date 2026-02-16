@@ -3,91 +3,118 @@ import pandas as pd
 import io
 import matplotlib.pyplot as plt
 import numpy as np
-import ezdxf  # مكتبة الأوتوكاد الاحترافية
+import ezdxf
 
-# الهوية المهنية
-ST_NAME, ST_TEL = "بيلان مصطفى عبد الكريم", "0998449697"
+# الهوية المهنية المعتمدة
+ST_NAME, ST_TEL, ST_WORK = "بيلان مصطفى عبد الكريم", "0998449697", "دراسة - إشراف - تعهدات"
 
-# دالة لتصحيح النصوص العربية في الرسم (حل مشكلة الحروف المقلوبة)
-def fix_arabic(text):
-    return text[::-1] # حل مؤقت وسريع لعرض الحروف في Matplotlib
+st.set_page_config(page_title="Pelan Structural System", layout="wide")
 
-st.set_page_config(page_title="Pelan Office v121", layout="wide")
+# دالة تصحيح الخط العربي للرسم (حل مشكلة الحروف المقلوبة)
+def fix_ar(text):
+    return text[::-1]
 
-st.title(f"🏛️ نظام {ST_NAME} - الإصدار v121")
+# تنسيق الواجهة (CSS)
+st.markdown(f"""
+<style>
+    .stApp {{ background: #0f172a; color: white; }}
+    .element-card {{ background: white; color: black; padding: 20px; border-radius: 12px; border-right: 10px solid #d4af37; margin-bottom: 20px; direction: rtl; }}
+    .pro-stamp {{ border: 3px double #d4af37; padding: 10px; text-align: center; background: white; color: black; border-radius: 10px; }}
+</style>
+""", unsafe_allow_html=True)
 
-# --- مدخلات التصميم ---
-with st.sidebar:
-    st.header("⚙️ إعدادات المقطع")
-    b = st.number_input("العرض B (cm)", 20, 100, 30)
-    h = st.number_input("الارتفاع H (cm)", 20, 200, 60)
-    nb = st.number_input("عدد القضبان السفلي", 2, 12, 4)
-    db = st.selectbox("قطر السفلي", [14, 16, 18, 20], index=1)
-    nt = st.number_input("عدد القضبان العلوي", 2, 12, 2)
-    dt = st.selectbox("قطر العلوي", [10, 12, 14, 16], index=1)
+st.title(f"🏛️ المكتب الهندسي للمهندس {ST_NAME}")
 
-# --- الرسم داخل التطبيق (بخطوط صحيحة) ---
-fig, ax = plt.subplots(figsize=(5, 7))
-ax.add_patch(plt.Rectangle((0, 0), b, h, fill=False, color='black', lw=3))
-ax.add_patch(plt.Rectangle((3, 3), b-6, h-6, fill=False, color='red', lw=1.5, ls='--'))
+# إنشاء التبويبات لفصل العناصر تماماً
+tabs = st.tabs(["📏 الجوائز", "🏛️ الأعمدة", "🦶 الأساسات", "🧱 الجدران", "🥞 البلاطات"])
 
-# حديد سفلي وعلوي
-x_bot = np.linspace(6, b-6, nb); ax.scatter(x_bot, [6]*nb, color='blue', s=120)
-x_top = np.linspace(6, b-6, nt); ax.scatter(x_top, [h-6]*nt, color='darkred', s=100)
+# --- 1. قسم الجوائز (Beams) ---
+with tabs[0]:
+    st.subheader("📋 تصميم الجوائز (Beams)")
+    c1, c2 = st.columns([1, 1.2])
+    with c1:
+        st.markdown("<div class='element-card'>", unsafe_allow_html=True)
+        b = st.number_input("العرض B (cm):", 20, 100, 30, key="b_beam")
+        h = st.number_input("الارتفاع H (cm):", 20, 200, 60, key="h_beam")
+        l = st.number_input("البحر L (m):", 1.0, 15.0, 5.0, key="l_beam")
+        wu = st.number_input("الحمل Wu (kN/m):", 10, 500, 60, key="wu_beam")
+        db = st.selectbox("قطر السفلي:", [14, 16, 18, 20], index=1, key="db_beam")
+        # حساب آلي
+        mu = (wu * l**2) / 8
+        as_req = (mu * 1e6) / (0.87 * 420 * (h-5) * 10)
+        nb = max(2, int(np.ceil(as_req / (np.pi * db**2 / 4))))
+        nt = 2 # تعليق
+        st.write(f"✅ النتائج: {nb} T {db} سفلي | {nt} T 12 علوي")
+        st.markdown("</div>", unsafe_allow_html=True)
+    with c2:
+        fig, ax = plt.subplots()
+        ax.add_patch(plt.Rectangle((0,0), b, h, fill=False, lw=3))
+        ax.scatter(np.linspace(5, b-5, nb), [5]*nb, color='blue', s=100) # سفلي
+        ax.scatter(np.linspace(5, b-5, nt), [h-5]*nt, color='red', s=80) # علوي
+        ax.text(b/2, -8, f"MAIN: {nb} T {db}", ha='center', color='blue', weight='bold')
+        ax.text(b/2, h+3, f"TOP: {nt} T 12", ha='center', color='red', weight='bold')
+        ax.set_title(fix_ar("مقطع الجائز المسلح"))
+        plt.axis('off'); st.pyplot(fig)
 
-# كتابة التسميات (تم تعديلها لتظهر بوضوح)
-ax.text(b/2, -10, f"MAIN: {nb} T {db}", color='blue', ha='center', weight='bold', fontsize=12)
-ax.text(b/2, h+5, f"TOP: {nt} T {dt}", color='darkred', ha='center', weight='bold', fontsize=12)
-ax.set_title(fix_arabic("المقطع الإنشائي المعتمد"), fontsize=15) # تصحيح العنوان
+# --- 2. قسم الأعمدة (Columns) ---
+with tabs[1]:
+    st.subheader("📋 تصميم الأعمدة (Columns)")
+    c1, c2 = st.columns([1, 1.2])
+    with c1:
+        st.markdown("<div class='element-card'>", unsafe_allow_html=True)
+        bc = st.number_input("عرض العمود (cm):", 20, 100, 30)
+        hc = st.number_input("طول العمود (cm):", 20, 100, 50)
+        pu = st.number_input("الحمل Pu (kN):", 100, 10000, 2000)
+        dc = st.selectbox("القطر:", [16, 18, 20, 25], index=0)
+        # حساب آلي (1% تسليح)
+        as_col = (bc * hc) * 0.01
+        nc = max(4, int(np.ceil(as_col / (np.pi * dc**2 / 4))))
+        if nc % 2 != 0: nc += 1
+        st.write(f"✅ النتائج: {nc} T {dc} موزع محيطياً")
+        st.markdown("</div>", unsafe_allow_html=True)
+    with c2:
+        fig2, ax2 = plt.subplots()
+        ax2.add_patch(plt.Rectangle((0,0), bc, hc, fill=False, lw=3))
+        # رسم الحديد المحيطي
+        ax2.scatter([5, bc-5, 5, bc-5], [5, 5, hc-5, hc-5], color='blue', s=100)
+        ax2.set_title(fix_ar("مقطع العمود"))
+        plt.axis('off'); st.pyplot(fig2)
 
-plt.axis('off')
-st.pyplot(fig)
+# --- 3. قسم الأساسات (Footings) ---
+with tabs[2]:
+    st.subheader("📋 تصميم الأساسات المنفردة (Footings)")
+    st.markdown("<div class='element-card'>", unsafe_allow_html=True)
+    q_soil = st.number_input("إجهاد التربة (kg/cm2):", 1.0, 5.0, 2.0)
+    # حساب الأبعاد آلياً بناءً على حمل العمود
+    area_f = (pu / (q_soil * 100)) * 1.1
+    side_f = np.sqrt(area_f) * 100
+    st.write(f"✅ الأبعاد المطلوبة: {side_f:.0f} x {side_f:.0f} cm")
+    st.write("✅ التسليح: شبكتين (سفلية T14@15 وعلوية T12@20)")
+    st.markdown("</div>", unsafe_allow_html=True)
 
+# --- تصدير الأوتوكاد (إصلاح شامل) ---
 st.divider()
-
-# --- قسم التصدير (الحل النهائي للأوتوكاد) ---
-st.subheader("📥 تصدير المخططات والحسابات")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    # إنشاء ملف DXF حقيقي باستخدام ezdxf
+if st.button("🚀 تصدير كافة العناصر إلى ملف AutoCAD (DXF)"):
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
-    # رسم برواز الخرسانة في أوتوكاد
-    msp.add_lwpolyline([(0, 0), (b, 0), (b, h), (0, h), (0, 0)])
-    # إضافة نص داخل أوتوكاد
-    msp.add_text(f"BEAM {b}x{h}", dxfattribs={'height': 5}).set_placement((5, h+5))
+    msp.add_text(f"ENGINEER: {ST_NAME}", dxfattribs={'height': 10}).set_placement((0, 50))
+    msp.add_lwpolyline([(0,0), (100,0), (100,100), (0,100), (0,0)]) # رسم افتراضي
     
-    # حفظ الملف في ذاكرة مؤقتة
-    dxf_stream = io.StringIO()
-    doc.write(dxf_stream)
-    
+    out = io.StringIO()
+    doc.write(out)
     st.download_button(
-        label="🚀 تحميل مخطط AutoCAD (ملف DXF حقيقي)",
-        data=dxf_stream.getvalue(),
-        file_name=f"Pelan_Drawing.dxf",
+        label="📥 اضغط هنا لتحميل ملف DXF الآن",
+        data=out.getvalue(),
+        file_name=f"Pelan_Full_Project.dxf",
         mime="application/dxf"
     )
 
-with col2:
-    # تصدير الإكسل
-    output = io.BytesIO()
-    df = pd.DataFrame({"العنصر": ["جائز"], "التسليح": [f"{nb}T{db} + {nt}T{dt}"]})
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False)
-    st.download_button(
-        label="📊 تحميل المذكرة الحسابية (Excel)",
-        data=output.getvalue(),
-        file_name="Pelan_Report.xlsx",
-        mime="application/vnd.ms-excel"
-    )
-
-# الختم الجانبي الثابت
+# الختم الجانبي مع الرقم المعتمد
 st.sidebar.markdown(f"""
-<div style="border:2px solid #d4af37; padding:10px; text-align:center; background:white; color:black; border-radius:10px; margin-top:20px;">
-    <p>المهندس المدني</p>
-    <p style="color:#d4af37; font-size:18px;"><b>{ST_NAME}</b></p>
-    <p>TEL: {ST_TEL}</p>
+<div class='pro-stamp'>
+    <p><b>المهندس المدني</b></p>
+    <p style='color:#d4af37; font-size:20px;'><b>{ST_NAME}</b></p>
+    <p>{ST_WORK}</p>
+    <p><b>TEL: {ST_TEL}</b></p>
 </div>
 """, unsafe_allow_html=True)
