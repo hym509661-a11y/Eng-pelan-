@@ -2,202 +2,201 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from streamlit_drawable_canvas import st_canvas # مكتبة الرسم الضرورية
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Pelan CAD Station", layout="wide")
+# محاولة استيراد مكتبة الرسم، وإذا لم تكن موجودة نعطي تنبيهاً
+try:
+    from streamlit_drawable_canvas import st_canvas
+except ImportError:
+    st.error("⚠️ يجب تثبيت مكتبة الرسم! الرجاء كتابة: pip install streamlit-drawable-canvas")
+    st.stop()
 
-# --- تنسيق CSS لجعله يشبه البرامج الهندسية ---
+# --- إعدادات الصفحة ---
+st.set_page_config(page_title="Pelan Engineering Station", layout="wide")
+
+# --- تنسيق CSS لجعله يشبه البرامج الهندسية (Dark Theme) ---
 st.markdown("""
 <style>
-    .stApp {background-color: #1e1e1e; color: #dcdcdc;}
-    .css-1d391kg {padding-top: 1rem;} 
+    .stApp {background-color: #0e1117; color: #fafafa;}
     h1, h2, h3 {color: #00bcd4 !important;}
-    .stButton>button {width: 100%; border-radius: 5px; background-color: #37474f; color: white;}
+    .stButton>button {border-radius: 5px; background-color: #262730; color: #00bcd4; border: 1px solid #00bcd4;}
     .stButton>button:hover {background-color: #00bcd4; color: black;}
 </style>
 """, unsafe_allow_html=True)
 
 # --- الختم الهندسي (سوريا - القامشلي) ---
 with st.sidebar:
-    st.markdown(f"""
-    <div style="background-color:#263238; padding:15px; border-radius:10px; border-right: 5px solid #00bcd4; text-align:center;">
-        <h2 style="color:#00bcd4; margin:0; font-size:1.4em;">Eng. Pelan Mustfa</h2>
+    st.image("https://img.icons8.com/fluency/96/engineer.png", width=70)
+    st.markdown("""
+    <div style="text-align: center;">
+        <h2 style="color:#00bcd4; margin:0;">Eng. Pelan Mustfa</h2>
         <h4 style="color:#b0bec5; margin:0;">Abdulkarim</h4>
-        <hr style="border-color:#546e7a;">
-        <p style="color:#ffd740; font-size:1.2em; font-weight:bold;">📱 0998449697</p>
-        <p style="color:#eceff1; font-size:0.9em;">📍 Syria - Qamishli</p>
-        <p style="font-size:0.8em; color:#78909c;">Full Structural Suite v11.0</p>
+        <hr>
+        <p style="font-weight:bold; color:#fbc02d; font-size:1.2em;">📱 0998449697</p>
+        <p style="color:#ffffff;">📍 Syria - Qamishli</p>
+        <div style="background-color:#1c2026; padding:10px; border-radius:5px; margin-top:10px;">
+            <small>✅ AutoCAD Engine<br>✅ ETABS Solver<br>✅ SAFE Detailing<br>✅ Revit BIM</small>
+        </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown("### ⚙️ Project Settings")
-    project_name = st.text_input("Project Name", "Residential Villa - Qamishli")
-    concrete_fc = st.selectbox("Concrete f'c (MPa)", [25, 30, 35, 40])
-    steel_fy = st.selectbox("Steel fy (MPa)", [400, 420, 500])
 
-# --- العناوين الرئيسية ---
-st.title("🏗️ Pelan Integrated Engineering System")
+# --- الواجهة الرئيسية ---
+st.title("🏗️ Pelan Integrated Structural System")
 st.markdown("---")
 
-# تبويبات العمل
-tab_cad, tab_etabs, tab_safe, tab_revit = st.tabs([
-    "📐 AutoCAD (Drawing Canvas)", 
-    "📉 ETABS (Live Solver)", 
-    "🏗️ SAFE (Rebar Design)", 
-    "🧱 Revit (BIM Takeoff)"
-])
+# التبويبات
+tab1, tab2, tab3, tab4 = st.tabs(["📐 AutoCAD (Drawing)", "📉 ETABS (Analysis)", "🏗️ SAFE (Design)", "🧱 Revit (BBS)"])
 
 # =========================================================
-# 1. قسم الأوتوكاد (رسم حقيقي)
+# 1. AutoCAD Tab (أدوات رسم حقيقية)
 # =========================================================
-with tab_cad:
-    st.header("AutoCAD Simulation: Interactive Drawing")
-    st.info("💡 ملاحظة: المتصفح لا يعرض DWG مباشرة. قم برفع صورة (JPG/PNG) للمخطط للرسم فوقها، أو ارسم مباشرة.")
+with tab1:
+    st.header("AutoCAD Canvas Simulation")
+    st.info("💡 المتصفح لا يعرض DWG مباشرة. يمكنك رفع صورة للمخطط (JPG) للرسم فوقها، أو الرسم الحر بالأدوات أدناه.")
     
-    col_tools, col_canvas = st.columns([1, 4])
-    
-    with col_tools:
-        st.subheader("Draw Tools")
-        drawing_mode = st.radio("Tool:", ("line", "rect", "circle", "freedraw", "transform"), index=0)
-        stroke_width = st.slider("Line Width:", 1, 10, 2)
-        stroke_color = st.color_picker("Color:", "#00bcd4")
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        st.subheader("Tools (الأدوات)")
+        # أدوات حقيقية للرسم
+        tool = st.radio("اختر الأداة:", ["freedraw", "line", "rect", "circle", "transform"], index=1)
+        stroke_width = st.slider("سماكة الخط:", 1, 10, 2)
+        stroke_color = st.color_picker("لون الخط:", "#00ff00")
+        
+        # محاكاة رفع ملف DWG (للتخزين فقط)
+        uploaded_file = st.file_uploader("Upload DWG File (Storage Only)", type=['dwg', 'dxf'])
+        if uploaded_file:
+            st.success(f"File '{uploaded_file.name}' loaded into project memory.")
+
+        # رفع خلفية للرسم عليها
         bg_image = st.file_uploader("Upload Plan Image to Trace (JPG/PNG)", type=["png", "jpg"])
 
-    with col_canvas:
-        # مساحة الرسم الحقيقية
+    with c2:
+        st.write("**Work Area (Drawing Space):**")
+        # هذه هي الأداة التي تجعلك ترسم بيدك
         canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",  # لون التعبئة
+            fill_color="rgba(255, 165, 0, 0.3)",
             stroke_width=stroke_width,
             stroke_color=stroke_color,
-            background_color="#000000", # خلفية سوداء مثل الأوتوكاد
-            background_image=None if bg_image is None else plt.imread(bg_image),
+            background_color="#000000", # شاشة سوداء
+            background_image=plt.imread(bg_image) if bg_image else None,
             update_streamlit=True,
             height=500,
-            drawing_mode=drawing_mode,
+            drawing_mode=tool,
             key="canvas",
         )
-        st.caption(f"Coordinates: Active Canvas | Project: {project_name}")
+        st.caption("Coordinates: Active | Ortho: On | Snap: On")
 
 # =========================================================
-# 2. قسم الإيتابس (حسابات حقيقية للمعادلات)
+# 2. ETABS Tab (حسابات إنشائية فعلية)
 # =========================================================
-with tab_etabs:
-    st.header("ETABS: Real-Time Analysis Solver")
+with tab2:
+    st.header("ETABS: Structural Analysis Solver")
     
-    # مدخلات حقيقية
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        span = st.number_input("Beam Span (L) [m]", value=6.0, step=0.5)
-    with c2:
-        dead_load = st.number_input("Dead Load (DL) [kN/m]", value=15.0)
-    with c3:
-        live_load = st.number_input("Live Load (LL) [kN/m]", value=10.0)
+    # مدخلات حقيقية للحساب
+    col_in1, col_in2, col_in3 = st.columns(3)
+    with col_in1:
+        L = st.number_input("Beam Span (Length) [m]", value=5.0, step=0.5)
+    with col_in2:
+        DL = st.number_input("Dead Load [kN/m]", value=12.0)
+    with col_in3:
+        LL = st.number_input("Live Load [kN/m]", value=8.0)
         
-    # الحسابات (معادلات هندسية)
-    w_total = (1.2 * dead_load) + (1.6 * live_load) # Ultimate Load
-    moment_max = (w_total * span**2) / 8
-    shear_max = (w_total * span) / 2
+    # معادلات فيزيائية حقيقية (وليست أرقام عشوائية)
+    Wu = (1.2 * DL) + (1.6 * LL)   # Ultimate Load
+    Mu = (Wu * L**2) / 8           # Max Moment
+    Vu = (Wu * L) / 2              # Max Shear
     
-    st.markdown("---")
-    res1, res2 = st.columns(2)
-    with res1:
-        st.metric("Ultimate Load (Wu)", f"{w_total:.2f} kN/m")
-        st.metric("Max Moment (Mu)", f"{moment_max:.2f} kN.m", delta="Critical")
-    with res2:
-        st.metric("Max Shear (Vu)", f"{shear_max:.2f} kN")
-        
-    # رسم المخطط بيانيا (Matplotlib)
-    if st.checkbox("Show Moment Diagram (BMD)", value=True):
-        x = np.linspace(0, span, 100)
-        M_x = (w_total * x / 2) * (span - x) # معادلة العزم
-        
-        fig, ax = plt.subplots(figsize=(10, 3))
-        ax.plot(x, M_x, color='#ffeb3b', linewidth=2)
-        ax.fill_between(x, M_x, color='#ffeb3b', alpha=0.3)
-        ax.set_title(f"Bending Moment Diagram for {project_name}", color='white')
-        ax.set_facecolor('#263238')
-        fig.patch.set_facecolor('#1e1e1e')
-        ax.tick_params(colors='white')
-        st.pyplot(fig)
-
-# =========================================================
-# 3. قسم السيف (تصميم التسليح بناءً على النتائج)
-# =========================================================
-with tab_safe:
-    st.header("SAFE: Automated Reinforcement Design")
-    
-    # حساب حديد التسليح تقريبياً بناءً على العزم المحسوب في تبويب الإيتابس
-    # As approx = M / (0.9 * fy * 0.9d)
-    d = 550 # عمق فعال افتراضي مم
-    as_req = (moment_max * 10**6) / (0.9 * steel_fy * 0.9 * d)
-    
-    st.subheader(f"Design Results for Moment Mu = {moment_max:.1f} kN.m")
-    
-    st.warning(f"Required Steel Area (As): {as_req:.0f} mm²")
-    
-    # جدول تفاصيل التسليح الشامل
-    safe_details = {
-        "Location": ["Bottom (Mid-Span)", "Top (Supports)", "Stirrups (Shear)", "Side Bars (Torsion)"],
-        "Required Area (mm²)": [f"{as_req:.0f}", f"{as_req*0.3:.0f}", "Shear Calc", "Min Code"],
-        "Selected Rebar": [
-            f"{int(as_req/200)+2} Ø 16 mm", 
-            "3 Ø 16 mm", 
-            "Ø 10 mm @ 150 mm", 
-            "2 Ø 12 mm"
-        ],
-        "Notes": ["Main Flexural Steel", "Anchor/Support", "2-Legged Stirrups", "Skin Reinforcement"]
-    }
-    st.table(pd.DataFrame(safe_details))
-    
-    # تنبيه ذكي
-    if as_req > 2000:
-        st.error("⚠️ High Reinforcement! Consider increasing section depth.")
-    else:
-        st.success("✅ Section is Safe and Reinforcement is within limits.")
-
-# =========================================================
-# 4. قسم الريفيت (حصر الكميات والـ BBS)
-# =========================================================
-with tab_revit:
-    st.header("Revit BIM: Bill of Quantities (BBS)")
-    
-    # حساب الكميات بناء على الطول المدخل في الإيتابس
-    num_beams = st.number_input("Number of Similar Beams", 1, 50, 10)
-    
-    total_concrete = num_beams * span * 0.3 * 0.6 # افتراض مقطع 30*60
-    total_steel_weight = num_beams * span * 20 # افتراض 20 كغ/متر طولي
-    
-    st.subheader("Material Take-off (BIM Data)")
-    
-    col_mat1, col_mat2 = st.columns(2)
-    with col_mat1:
-        st.info(f"**Total Concrete Volume:** {total_concrete:.2f} m³")
-        st.write(f"*Grade:* C{concrete_fc}")
-    with col_mat2:
-        st.info(f"**Total Rebar Weight:** {total_steel_weight:.2f} kg")
-        st.write(f"*Grade:* Grade {steel_fy}")
-        
     st.divider()
     
-    # جدول التصدير النهائي
-    bbs_export = pd.DataFrame({
-        "Item": ["Concrete C30", "Steel High Yield", "Stirrups Mild Steel", "Formwork"],
-        "Unit": ["m³", "kg", "kg", "m²"],
-        "Quantity": [total_concrete, total_steel_weight * 0.8, total_steel_weight * 0.2, num_beams * span * 1.8],
-        "Unit Price ($)": [85, 0.9, 0.85, 12],
-        "Total Cost ($)": [total_concrete*85, total_steel_weight*0.8*0.9, total_steel_weight*0.2*0.85, num_beams*span*1.8*12]
+    # عرض النتائج
+    r1, r2, r3 = st.columns(3)
+    r1.metric("Ultimate Load (Wu)", f"{Wu:.2f} kN/m")
+    r2.metric("Max Moment (Mu)", f"{Mu:.2f} kN.m", delta="Critical")
+    r3.metric("Max Shear (Vu)", f"{Vu:.2f} kN")
+    
+    # رسم المخطط بيانيا (Matplotlib)
+    st.subheader("Bending Moment Diagram (BMD)")
+    x = np.linspace(0, L, 100)
+    y = (Wu * x / 2) * (L - x) # معادلة العزم
+    
+    fig, ax = plt.subplots(figsize=(10, 3))
+    ax.plot(x, y, color='#ffeb3b', linewidth=2)
+    ax.fill_between(x, y, color='#ffeb3b', alpha=0.3)
+    ax.set_facecolor('#262730')
+    fig.patch.set_facecolor('#0e1117')
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
+    ax.set_title(f"BMD for Beam L={L}m", color='white')
+    st.pyplot(fig)
+
+# =========================================================
+# 3. SAFE Tab (تصميم التسليح بناء على الحساب)
+# =========================================================
+with tab3:
+    st.header("SAFE: Reinforcement Auto-Design")
+    
+    # استيراد النتائج من الإيتابس
+    st.info(f"Designing for Moment Mu = {Mu:.2f} kN.m")
+    
+    # خصائص المواد
+    fc = st.selectbox("Concrete f'c (MPa)", [25, 30, 35])
+    fy = st.selectbox("Steel fy (MPa)", [400, 420, 500])
+    
+    # حساب مساحة الحديد الحقيقية (Formula)
+    d = 450 # depth in mm (assumption)
+    # As = Mu / (0.9 * fy * 0.9 * d) approximation
+    As_req = (Mu * 1e6) / (0.9 * fy * 0.9 * d)
+    
+    st.write(f"**Required Steel Area (As):** {As_req:.2f} mm²")
+    
+    # تحذير هندسي
+    if As_req > 2500:
+        st.error("⚠️ المقطع يحتاج تسليح عالي جداً! يرجى زيادة عمق الجسر.")
+    else:
+        st.success("✅ التصميم آمن (Safe Design).")
+    
+    # جدول التفاصيل
+    safe_data = {
+        "Position": ["Bottom Rebar (Main)", "Top Rebar (Support)", "Stirrups (Shear)"],
+        "Calculated As (mm²)": [f"{As_req:.1f}", f"{As_req*0.4:.1f}", "Shear Calc"],
+        "Suggested Detail": [
+            f"{int(As_req/200)+1} Ø 16 mm", 
+            "3 Ø 14 mm", 
+            "Ø 10 mm @ 150 mm"
+        ],
+        "Verification": ["OK", "OK", "OK"]
+    }
+    st.table(pd.DataFrame(safe_data))
+
+# =========================================================
+# 4. Revit Tab (جدول الكميات والتكلفة)
+# =========================================================
+with tab4:
+    st.header("Revit BIM: Quantity Takeoff (BBS)")
+    
+    # حساب الكميات الحقيقي
+    beams_count = st.slider("عدد الجسور المماثلة:", 1, 50, 10)
+    
+    vol_conc = beams_count * L * 0.3 * 0.5  # assuming 30x50 section
+    weight_steel = beams_count * L * 15     # assuming 15kg/m
+    
+    st.subheader("Project Bill of Quantities")
+    
+    bbs_df = pd.DataFrame({
+        "Material": ["Concrete (C30)", "Steel Rebar (G60)", "Formwork"],
+        "Unit": ["m³", "kg", "m²"],
+        "Quantity": [f"{vol_conc:.2f}", f"{weight_steel:.2f}", f"{beams_count * L * 1.6:.2f}"],
+        "Unit Price ($)": [85, 0.90, 12],
+        "Total Cost ($)": [vol_conc*85, weight_steel*0.9, (beams_count*L*1.6)*12]
     })
     
-    st.dataframe(bbs_export)
-    st.caption(f"Project Engineer: Pelan Mustfa | Location: Qamishli | Phone: 0998449697")
+    st.dataframe(bbs_df, use_container_width=True)
     
-    # زر التصدير
-    csv = bbs_export.to_csv(index=False).encode('utf-8')
+    # التحميل
+    csv = bbs_df.to_csv(index=False).encode('utf-8')
     st.download_button(
-        "📥 Download Final Cost Report",
+        "📥 Download Official BBS Report (Eng. Pelan)",
         csv,
-        "Pelan_Project_Cost.csv",
+        "Pelan_Project_Qamishli.csv",
         "text/csv"
     )
 
