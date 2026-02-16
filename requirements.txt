@@ -1,6 +1,3 @@
 streamlit
-pandas
-xlsxwriter
-ezdxf
-fpdf
+numpy
 matplotlib
