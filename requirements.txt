@@ -2,7 +2,6 @@ streamlit
 pandas
 xlsxwriter
 ezdxf
-streamlit-drawable-canvas
 
 
 
