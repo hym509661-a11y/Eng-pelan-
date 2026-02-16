@@ -3,89 +3,132 @@ import pandas as pd
 import io
 import matplotlib.pyplot as plt
 import numpy as np
+import base64
 
-# الهوية المهنية
+# الهوية المهنية المعتمدة
 ST_NAME, ST_TEL = "بيلان مصطفى عبد الكريم", "0998449697"
 
-st.set_page_config(page_title="Pelan Office v118", layout="wide")
+st.set_page_config(page_title="Pelan Office v120", layout="wide")
 
-# دالة رسم المقطع مع كتابة التفاصيل (علوي وسفلي)
-def draw_section_final(b, h, n_bot, d_bot, n_top, d_top, title):
+# دالة الرسم المحدثة (علوي + سفلي + تسميات)
+def draw_professional_section(b, h, n_bot, d_bot, n_top, d_top, title):
     fig, ax = plt.subplots(figsize=(4, 5))
-    ax.add_patch(plt.Rectangle((0, 0), b, h, fill=False, color='black', lw=3)) # خرسانة
-    ax.add_patch(plt.Rectangle((3, 3), b-6, h-6, fill=False, color='red', lw=1, ls='--')) # كانة
+    ax.add_patch(plt.Rectangle((0, 0), b, h, fill=False, color='black', lw=3))
+    ax.add_patch(plt.Rectangle((3, 3), b-6, h-6, fill=False, color='red', lw=1.5, ls='--'))
     
-    # حديد سفلي + كتابة العدد والقطر
-    x_bot = np.linspace(6, b-6, n_bot)
-    ax.scatter(x_bot, [6]*n_bot, color='blue', s=100)
-    ax.text(b/2, -10, f"{n_bot} T {d_bot}", color='blue', ha='center', fontweight='bold')
+    # رسم وتسمية السفلي
+    x_bot = np.linspace(6, b-6, n_bot) if n_bot > 1 else [b/2]
+    ax.scatter(x_bot, [6]*len(x_bot), color='blue', s=100)
+    ax.text(b/2, -10, f"MAIN: {n_bot} T {d_bot}", color='blue', ha='center', weight='bold')
     
-    # حديد علوي + كتابة العدد والقطر
-    x_top = np.linspace(6, b-6, n_top)
-    ax.scatter(x_top, [h-6]*n_top, color='darkblue', s=80)
-    ax.text(b/2, h+5, f"{n_top} T {d_top}", color='darkblue', ha='center', fontweight='bold')
+    # رسم وتسمية العلوي
+    x_top = np.linspace(6, b-6, n_top) if n_top > 1 else [b/2]
+    ax.scatter(x_top, [h-6]*len(x_top), color='darkred', s=80)
+    ax.text(b/2, h+5, f"TOP: {n_top} T {d_top}", color='darkred', ha='center', weight='bold')
     
-    ax.set_title(title)
+    ax.set_title(title, pad=20)
     ax.set_aspect('equal')
     plt.axis('off')
     return fig
 
-st.title(f"🏛️ نظام {ST_NAME} الهندسي")
+# واجهة المستخدم
+st.title(f"🏛️ نظام {ST_NAME} - v120")
 
-# منطقة الحسابات (مثال الجائز)
-st.subheader("📏 تصميم الجوائز مع التسليح العلوي والسفلي")
-c1, c2 = st.columns([1, 1.5])
-with c1:
-    b = st.number_input("العرض (cm)", value=30)
-    h = st.number_input("الارتفاع (cm)", value=60)
-    n_bot = st.number_input("عدد القضبان السفلي", value=4)
-    d_bot = st.number_input("قطر السفلي (mm)", value=16)
-    n_top = st.number_input("عدد القضبان العلوي", value=2)
-    d_top = st.number_input("قطر العلوي (mm)", value=12)
-with c2:
-    fig = draw_section_final(b, h, n_bot, d_bot, n_top, d_top, "مقطع عرضي كامل")
-    st.pyplot(fig)
+with st.expander("🛠️ إعدادات التصميم والتسليح", expanded=True):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        b = st.number_input("العرض B (cm)", 20, 100, 30)
+        h = st.number_input("الارتفاع H (cm)", 20, 200, 60)
+    with col2:
+        nb = st.number_input("عدد السفلي", 2, 12, 4)
+        db = st.selectbox("قطر السفلي", [14, 16, 18, 20], index=1)
+    with col3:
+        nt = st.number_input("عدد العلوي", 2, 12, 2)
+        dt = st.selectbox("قطر العلوي", [10, 12, 14, 16], index=1)
+
+st.pyplot(draw_professional_section(b, h, nb, db, nt, dt, "المقطع الإنشائي المعتمد"))
 
 st.divider()
 
-# --- الحل النهائي لمشكلة التصدير ---
-st.subheader("📥 مركز تحميل الملفات (اضغط للتحميل المباشر)")
+# --- الحل النهائي لمشكلة الأوتوكاد (DXF) ---
+def get_dxf_download_link(b, h, nb, db, nt, dt):
+    # بناء ملف DXF متوافق برمجياً
+    dxf_data = f"""0
+SECTION
+2
+HEADER
+9
+$ACADVER
+1
+AC1027
+0
+ENDSEC
+0
+SECTION
+2
+ENTITIES
+0
+LINE
+8
+Concrete
+10
+0.0
+20
+0.0
+11
+{b}
+21
+0.0
+0
+LINE
+8
+Concrete
+10
+{b}
+20
+0.0
+11
+{b}
+21
+{h}
+0
+LINE
+8
+Concrete
+10
+{b}
+20
+{h}
+11
+0.0
+21
+{h}
+0
+LINE
+8
+Concrete
+10
+0.0
+20
+{h}
+11
+0.0
+21
+0.0
+0
+ENDSEC
+0
+EOF"""
+    b64 = base64.b64encode(dxf_data.encode()).decode()
+    return f'<a href="data:application/dxf;base64,{b64}" download="Pelan_Detail.dxf" style="text-decoration:none;"><button style="background-color:#d4af37; color:white; padding:15px; border-radius:10px; border:none; width:100%; cursor:pointer; font-weight:bold;">🚀 تحميل ملف AutoCAD المطور (DXF)</button></a>'
 
-col_a, col_b = st.columns(2)
+st.markdown(get_dxf_download_link(b, h, nb, db, nt, dt), unsafe_allow_html=True)
 
-with col_a:
-    # 1. تصدير المذكرة الحسابية (Excel)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df = pd.DataFrame({
-            "العنصر": ["جائز"], "العرض": [b], "الارتفاع": [h],
-            "سفلي": [f"{n_bot}T{d_bot}"], "علوي": [f"{n_top}T{d_top}"]
-        })
-        df.to_excel(writer, index=False, sheet_name='Design')
-    
-    st.download_button(
-        label="📥 تحميل المذكرة الحسابية (Excel)",
-        data=output.getvalue(),
-        file_name=f"Calculation_Report_{ST_NAME}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-with col_b:
-    # 2. تصدير المخطط (DXF) كملف حقيقي
-    dxf_content = f"0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1027\n0\nENDSEC\n0\nEOF" # هيكل مبسط
-    st.download_button(
-        label="🚀 تحميل مخطط AutoCAD (DXF)",
-        data=dxf_content,
-        file_name=f"Structural_Detail_{ST_NAME}.dxf",
-        mime="application/dxf"
-    )
-
-# الختم المحدث
+# الختم
 st.sidebar.markdown(f"""
-<div style="border:2px solid #d4af37; padding:10px; text-align:center; background:white; color:black; border-radius:10px;">
+<div style="border:3px double #d4af37; padding:10px; text-align:center; background:white; color:black; border-radius:10px;">
     <p>المهندس المدني</p>
-    <p style="color:#d4af37; font-size:18px;"><b>{ST_NAME}</b></p>
+    <p style="color:#d4af37; font-size:20px;"><b>{ST_NAME}</b></p>
     <p>TEL: {ST_TEL}</p>
 </div>
-""", unsafe_allow_html=True)
 """, unsafe_allow_html=True)
