@@ -4,93 +4,112 @@ import numpy as np
 import ezdxf
 import io
 
-# الهوية المهنية
-NAME, TEL = "بيلان مصطفى عبد الكريم", "0998449697"
-WORK = "دراسة - إشراف - تعهدات"
+# البيانات الثابتة للمهندس بيلان
+ST_NAME = "بيلان مصطفى عبد الكريم"
+ST_TEL = "0998449697"
+ST_WORK = "دراسة - إشراف - تعهدات"
 
-st.set_page_config(page_title="Pelan Office v108", layout="wide")
+st.set_page_config(page_title="Pelan Office v109", layout="wide")
 
-# تصميم الواجهة
+# تصميم الواجهة المهنية
 st.markdown(f"""
 <style>
-    .stApp {{ background: linear-gradient(135deg, #0f2027, #203a43); color: white; }}
-    .calc-box {{ background: white; color: black; padding: 20px; border-radius: 10px; direction: rtl; border-right: 10px solid #d4af37; }}
-    .stamp {{ border: 4px double #d4af37; padding: 10px; width: 280px; text-align: center; background: white; color: black; float: left; margin-top: 20px; }}
+    .stApp {{ background: linear-gradient(135deg, #1a1c2c, #4a192c); color: white; }}
+    .calc-card {{ background: #ffffff; color: #1a1a1a; padding: 20px; border-radius: 15px; direction: rtl; border-right: 10px solid #d4af37; margin-bottom: 20px; }}
+    .pro-stamp {{ border: 3px solid #d4af37; padding: 10px; width: 280px; text-align: center; background: white; color: black; float: left; border-radius: 10px; }}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🏗️ المكتب الهندسي - الإصدار v108 (الكامل)")
+st.title(f"🏗️ مكتب {ST_NAME} الهندسي")
 
-# المدخلات
-with st.sidebar:
-    st.header("⚙️ معطيات التصميم")
-    b_cm = st.number_input("العرض B (cm):", 20, 100, 30)
-    h_cm = st.number_input("الارتفاع H (cm):", 20, 200, 60)
-    l_m = st.number_input("البحر L (m):", 1.0, 15.0, 5.0)
-    w_kn = st.number_input("الحمل q (kN/m):", 1.0, 250.0, 50.0)
-    phi_bot = st.selectbox("قطر السفلي (mm):", [14, 16, 18, 20], index=1)
-    phi_st = st.number_input("قطر الكانة (mm):", 8, 12, 8)
+# نظام التبويبات لفصل العناصر الإنشائية تماماً
+tab1, tab2, tab3 = st.tabs(["📏 الجوائز (Beams)", "🏛️ الأعمدة (Columns)", "🦶 الأساسات (Footings)"])
 
-# الحسابات
-mu = (w_kn * l_m**2) / 8
-vu = (w_kn * l_m) / 2
-as_req = (mu * 1e6) / (0.87 * 420 * (h_cm-5) * 10)
-n_bot = max(2, int(np.ceil(as_req / (np.pi * phi_bot**2 / 4))))
-n_top = 2 # حديد التعليق ثابت
-
-col1, col2 = st.columns([1, 1.2])
-
-with col1:
-    st.markdown("<div class='calc-box'>", unsafe_allow_html=True)
-    st.subheader("📑 المذكرة الحسابية")
-    st.write(f"**العزم:** {mu:.2f} kNm | **القص:** {vu:.2f} kN")
-    st.divider()
-    st.write(f"✅ **السفلي:** {n_bot} T {phi_bot}")
-    st.write(f"✅ **العلوي (تعليق):** {n_top} T 12")
-    st.write(f"✅ **الكانات:** T {phi_st} @ 15 cm")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col2:
-    st.subheader("📊 تصدير المخططات")
-    
-    # تصدير Excel
-    try:
-        df = pd.DataFrame({
-            "Description": ["Moment", "Shear", "Main Steel", "Hanger Steel", "Stirrups"],
-            "Value": [f"{mu:.2f}", f"{vu:.2f}", f"{n_bot}T{phi_bot}", "2T12", f"T{phi_st}@15"]
-        })
-        towrite = io.BytesIO()
-        df.to_excel(towrite, index=False, engine='xlsxwriter')
-        st.download_button("📥 تحميل المذكرة (Excel)", towrite.getvalue(), "Structural_Report.xlsx")
-    except:
-        st.error("⚠️ يرجى إضافة xlsxwriter في ملف requirements.txt على GitHub")
-
-    # تصدير AutoCAD (رسم كامل للكانات والتعليق)
-    if st.button("🚀 توليد مخطط AutoCAD"):
-        doc = ezdxf.new(setup=True); msp = doc.modelspace()
-        s = 10 # scale to mm
-        w_mm, h_mm, cv = b_cm*s, h_cm*s, 25 # cover 2.5cm
+# ---------------------------------------------------------
+# الجزء الأول: الجوائز (Beams)
+# ---------------------------------------------------------
+with tab1:
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
+        st.markdown("<div class='calc-card'>", unsafe_allow_html=True)
+        st.subheader("📑 تصميم الجوائز")
+        b = st.number_input("العرض B (cm):", 20, 100, 30, key="b_b")
+        h = st.number_input("الارتفاع H (cm):", 20, 200, 60, key="h_b")
+        l = st.number_input("البحر L (m):", 1.0, 15.0, 5.0, key="l_b")
+        w = st.number_input("الحمل q (kN/m):", 1.0, 300.0, 50.0, key="w_b")
         
-        # 1. رسم الخرسانة
-        msp.add_lwpolyline([(0,0), (w_mm,0), (w_mm,h_mm), (0,h_mm), (0,0)], dxfattribs={'color': 7})
-        # 2. رسم الكانة
-        msp.add_lwpolyline([(cv,cv), (w_mm-cv,cv), (w_mm-cv,h_mm-cv), (cv,h_mm-cv), (cv,cv)], dxfattribs={'color': 1})
-        # 3. رسم السفلي
-        gap = (w_mm - 2*cv - 20) / (n_bot - 1 if n_bot > 1 else 1)
-        for i in range(n_bot):
-            msp.add_circle((cv + 10 + i*gap, cv + 10), radius=phi_bot/2, dxfattribs={'color': 5})
-        # 4. رسم التعليق
-        msp.add_circle((cv + 10, h_mm - cv - 10), radius=6, dxfattribs={'color': 5})
-        msp.add_circle((w_mm - cv - 10, h_mm - cv - 10), radius=6, dxfattribs={'color': 5})
+        # الحسابات الهندسية
+        mu = (w * l**2) / 8
+        as_req = (mu * 1e6) / (0.87 * 420 * (h-5) * 10)
+        n_bot = max(2, int(np.ceil(as_req / (np.pi * 16**2 / 4)))) # افتراض قطر 16
         
-        msp.add_text(f"ENG. {NAME}", dxfattribs={'height': 20}).set_placement((0, h_mm + 40))
-        
-        out_cad = io.StringIO()
-        doc.write(out_cad)
-        st.download_button("📥 اضغط هنا لحفظ ملف الرسم (DXF)", out_cad.getvalue(), "Beam_Drawing.dxf")
+        st.write(f"🔹 العزم: {mu:.2f} kNm")
+        st.write(f"✅ التسليح السفلي: {n_bot} T 16")
+        st.write(f"✅ حديد التعليق: 2 T 12")
+        st.write(f"✅ الكانات: T 8 @ 15 cm")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown(f"""<div class='stamp'><p><b>المهندس المدني</b></p>
-    <p style='color:#d4af37; font-size:18px;'><b>{NAME}</b></p>
-    <p>{WORK}</p><b>{TEL}</b></div>""", unsafe_allow_html=True)
+    with col2:
+        st.subheader("📊 تصدير الجوائز")
+        # تصدير Excel للجوائز
+        try:
+            df_b = pd.DataFrame({"Item": ["Beam", "B", "H", "Main Steel", "Hanger"], "Value": ["Concrete Beam", b, h, f"{n_bot}T16", "2T12"]})
+            buf_ex = io.BytesIO()
+            df_b.to_excel(buf_ex, index=False, engine='xlsxwriter')
+            st.download_button("📥 تحميل مذكرة الجائز (Excel)", buf_ex.getvalue(), "Beam_Report.xlsx")
+        except: st.warning("تأكد من إضافة xlsxwriter في ملف الإعدادات")
 
-# الرسوم التوضيحية لضمان الفهم
+        # تصدير AutoCAD (الرسم مع الكانات والتعليق)
+        if st.button("🚀 رسم الجائز (AutoCAD)"):
+            doc = ezdxf.new(setup=True); msp = doc.modelspace()
+            s = 10 # scale
+            w_mm, h_mm, cv = b*s, h*s, 25
+            # رسم الخرسانة والكانة والحديد
+            msp.add_lwpolyline([(0,0), (w_mm,0), (w_mm,h_mm), (0,h_mm), (0,0)], dxfattribs={'color': 7})
+            msp.add_lwpolyline([(cv,cv), (w_mm-cv,cv), (w_mm-cv,h_mm-cv), (cv,h_mm-cv), (cv,cv)], dxfattribs={'color': 1})
+            for i in range(n_bot): msp.add_circle((cv+10+i*20, cv+10), radius=8, dxfattribs={'color': 5})
+            msp.add_circle((cv+10, h_mm-cv-10), radius=6, dxfattribs={'color': 5})
+            msp.add_circle((w_mm-cv-10, h_mm-cv-10), radius=6, dxfattribs={'color': 5})
+            
+            buf_cad = io.StringIO(); doc.write(buf_cad)
+            st.download_button("📥 تحميل مخطط DXF", buf_cad.getvalue(), "Beam_Final.dxf")
+
+# ---------------------------------------------------------
+# الجزء الثاني: الأعمدة (Columns)
+# ---------------------------------------------------------
+with tab2:
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
+        st.markdown("<div class='calc-card'>", unsafe_allow_html=True)
+        st.subheader("📑 تصميم الأعمدة")
+        ac = st.number_input("الحمل المحوري (kN):", 100, 5000, 1200)
+        bc = st.number_input("عرض العمود (cm):", 20, 100, 30)
+        hc = st.number_input("طول العمود (cm):", 20, 100, 50)
+        st.write(f"✅ حديد التسليح: {max(4, int((bc*hc*0.01)/2))} T 16")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# الجزء الثالث: الأساسات (Footings)
+# ---------------------------------------------------------
+with tab3:
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
+        st.markdown("<div class='calc-card'>", unsafe_allow_html=True)
+        st.subheader("📑 تصميم الأساسات")
+        q_soil = st.number_input("إجهاد التربة (kg/cm2):", 0.5, 4.0, 2.0)
+        f_area = (1200 / 10) / q_soil # مثال تقريبي
+        st.write(f"✅ الأبعاد المطلوبة: {np.sqrt(f_area):.1f} x {np.sqrt(f_area):.1f} cm")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# الختم الثابت في أسفل الصفحة
+st.divider()
+st.markdown(f"""
+<div class='pro-stamp'>
+    <p style='margin:0; font-weight:bold;'>المهندس المدني</p>
+    <p style='color:#d4af37; font-size:20px; font-weight:bold; margin:5px 0;'>{ST_NAME}</p>
+    <p style='margin:0; font-size:12px;'>{ST_WORK}</p>
+    <p style='margin:5px 0; font-weight:bold;'>TEL: {ST_TEL}</p>
+</div>
+""", unsafe_allow_html=True)
+
+# الصور التوضيحية
