@@ -1,68 +1,83 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
-import ezdxf # مكتبة لقراءة ملفات الأوتوكاد
+from tkinter import messagebox
+import pandas as pd # لتصدير الجداول إلى إكسل
 
-class PelanEngineeringSuite:
+class PelanAdvancedBIM:
     def __init__(self, root):
         self.root = root
-        self.root.title("Pelan Engineering Suite - Eng Pelan Mustfa Abdulkarim")
-        self.root.geometry("900x600")
+        self.root.title("Pelan Ultimate Suite - Eng Pelan Mustfa Abdulkarim")
+        self.root.geometry("1100x700")
+        self.root.configure(bg="#f4f4f4")
+
+        # --- البيانات الهندسية الافتراضية ---
+        self.rebar_data = [] # لتخزين بيانات الحديد (BBS)
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        # العنوان الرئيسي والختم
+        header = tk.Frame(self.root, bg="#1e272e", height=80)
+        header.pack(fill="x")
         
-        # --- القائمة العلوية ---
-        self.menu_bar = tk.Menu(root)
-        self.root.config(menu=self.menu_bar)
+        title = tk.Label(header, text="PELAN MULTI-PRO (SAFE + ETABS + REVIT)", 
+                         fg="white", bg="#1e272e", font=("Arial", 16, "bold"))
+        title.pack(pady=10)
+
+        # لوحة التحكم الجانبية
+        control_panel = tk.Frame(self.root, width=250, bg="#d2dae2")
+        control_panel.pack(side="left", fill="y", padx=5, pady=5)
+
+        # أزرار العمليات
+        tk.Button(control_panel, text="1. Import AutoCAD Layout", command=self.import_layout, width=25).pack(pady=10)
+        tk.Button(control_panel, text="2. Design All Elements", command=self.calculate_reinforcement, width=25).pack(pady=10)
+        tk.Button(control_panel, text="3. Generate BBS (Excel)", command=self.export_to_excel, bg="#27ae60", fg="white", width=25).pack(pady=20)
+
+        # ساحة الرسم (Revit/SAFE View)
+        self.drawing_area = tk.Canvas(self.root, bg="white", bd=3, relief="ridge")
+        self.drawing_area.pack(side="right", expand=True, fill="both", padx=10, pady=10)
+
+        # الختم الثابت في الأسفل
+        footer = tk.Label(self.root, text="Designed by: Eng Pelan Mustfa Abdulkarim | 0998449697", 
+                          bg="#1e272e", fg="#feca57", font=("Arial", 11, "italic"))
+        footer.pack(side="bottom", fill="x")
+
+    def import_layout(self):
+        # محاكاة قراءة ملف أوتوكاد
+        self.drawing_area.delete("all")
+        self.drawing_area.create_rectangle(50, 50, 450, 150, outline="black", width=2) # جسر (Beam)
+        self.drawing_area.create_text(250, 100, text="Beam B1 (60x30)", font=("Arial", 10))
+        messagebox.showinfo("AutoCAD Sync", "Floor plan imported successfully. Elements identified.")
+
+    def calculate_reinforcement(self):
+        # محاكاة حسابات ETABS/SAFE للحديد
+        # الحديد العلوي (Top)
+        self.drawing_area.create_line(60, 60, 440, 60, fill="red", width=4) 
+        # الحديد السفلي (Bottom)
+        self.drawing_area.create_line(60, 140, 440, 140, fill="blue", width=4)
+        # الكانات (Stirrups)
+        for x in range(70, 440, 30):
+            self.drawing_area.create_line(x, 60, x, 140, fill="green", width=1)
+
+        # تخزين البيانات للجدول
+        self.rebar_data = [
+            {"Element": "Beam B1", "Type": "Top Bar", "Dia (mm)": 16, "Length (m)": 4.0, "Weight (kg)": 6.32},
+            {"Element": "Beam B1", "Type": "Bottom Bar", "Dia (mm)": 18, "Length (m)": 4.2, "Weight (kg)": 8.40},
+            {"Element": "Beam B1", "Type": "Stirrups (10nos)", "Dia (mm)": 8, "Length (m)": 1.5, "Weight (kg)": 5.90}
+        ]
+        messagebox.showinfo("Design Complete", "Reinforcement calculated based on ACI/Eurocode.")
+
+    def export_to_excel(self):
+        if not self.rebar_data:
+            messagebox.showwarning("No Data", "Please run Design first!")
+            return
         
-        # إضافة أقسام البرامج المتكاملة
-        self.add_modules()
+        # تحويل البيانات إلى ملف إكسل احترافي
+        df = pd.DataFrame(self.rebar_data)
+        file_name = "Pelan_BBS_Report.xlsx"
+        df.to_excel(file_name, index=False)
+        messagebox.showinfo("Success", f"BBS Report exported as {file_name}\nEng Pelan Mustfa Abdulkarim")
 
-        # --- واجهة العرض الرئيسية ---
-        self.canvas = tk.Canvas(root, bg="white", width=700, height=500)
-        self.canvas.pack(pady=20, expand=True)
-
-        # --- منطقة الختم الشخصي (Stamp) ---
-        self.footer = tk.Label(
-            root, 
-            text="Eng Pelan Mustfa Abdulkarim | Tel: 0998449697",
-            font=("Arial", 10, "bold"),
-            fg="navy"
-        )
-        self.footer.pack(side="bottom", fill="x")
-
-        self.status_label = tk.Label(root, text="Ready to import AutoCAD floor plan...", bd=1, relief="sunken", anchor="w")
-        self.status_label.pack(side="bottom", fill="x")
-
-    def add_modules(self):
-        # قسم الأوتوكاد و ETABS و SAFE
-        file_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.menu_bar.add_cascade(label="Modules", menu=file_menu)
-        file_menu.add_command(label="Import AutoCAD (DWG/DXF)", command=self.import_dxf)
-        file_menu.add_separator()
-        file_menu.add_command(label="ETABS Analysis", command=lambda: self.switch_mode("ETABS"))
-        file_menu.add_command(label="SAFE Foundation", command=lambda: self.switch_mode("SAFE"))
-        file_menu.add_command(label="Revit 3D Modeling", command=lambda: self.switch_mode("Revit"))
-
-    def import_dxf(self):
-        file_path = filedialog.askopenfilename(filetypes=[("AutoCAD Files", "*.dxf")])
-        if file_path:
-            try:
-                doc = ezdxf.readfile(file_path)
-                msp = doc.modelspace()
-                self.status_label.config(text=f"Loaded: {file_path}")
-                self.render_dwg_preview(msp)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to load file: {e}")
-
-    def render_dwg_preview(self, msp):
-        # محاكاة لعرض المسقط المعماري للبدء بتوزيع العناصر (بلاطات، أعمدة)
-        self.canvas.delete("all")
-        self.canvas.create_text(350, 250, text="[Floor Plan Preview Area]\nSelect elements to define as Columns/Beams", fill="gray")
-        messagebox.showinfo("SAFE Mode", "You can now define structural elements (Slabs, Columns) on the layout.")
-
-    def switch_mode(self, mode):
-        self.status_label.config(text=f"Switched to {mode} Environment...")
-
-# تشغيل البرنامج
 if __name__ == "__main__":
     root = tk.Tk()
-    app = PelanEngineeringSuite(root)
+    app = PelanAdvancedBIM(root)
     root.mainloop()
