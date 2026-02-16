@@ -1,4 +1,6 @@
 streamlit
-matplotlib
-fpdf
 pandas
+xlsxwriter
+ezdxf
+fpdf
+matplotlib
