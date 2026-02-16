@@ -4,3 +4,4 @@ xlsxwriter
 ezdxf
 fpdf
 matplotlib
+fpdf
