@@ -2,3 +2,8 @@ streamlit
 pandas
 xlsxwriter
 ezdxf
+pip install 
+streamlit
+drawable
+canvas
+
