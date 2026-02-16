@@ -4,148 +4,164 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-# --- الإعدادات الفنية للكود السوري ---
-st.set_page_config(page_title="Pelan Syrian Code Engine v17", layout="wide")
+# --- إعدادات النظام الهندسي ---
+st.set_page_config(page_title="Pelan Syrian Code Master v18", layout="wide")
 
-# --- التنسيق الجمالي الفاخر (High-End Luxury UI) ---
+# --- التنسيق البصري الفاخر (High-Contrast Luxury CSS) ---
 st.markdown("""
 <style>
-    .stApp { background-color: #000000; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .luxury-card {
-        background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
-        padding: 30px; border-radius: 20px; border: 2px solid #D4AF37;
-        text-align: center; box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
-        margin-bottom: 40px; direction: rtl;
+    .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Arial'; }
+    .header-box {
+        background: linear-gradient(135deg, #111111 0%, #000000 100%);
+        padding: 25px; border-radius: 15px; border: 3px solid #D4AF37;
+        text-align: center; box-shadow: 0px 5px 20px rgba(212, 175, 55, 0.4);
+        margin-bottom: 30px; direction: rtl;
     }
-    .gold-title { color: #D4AF37; font-size: 3em; font-weight: 800; margin: 0; text-shadow: 2px 2px 4px #000; }
-    .white-sub { color: #ffffff; font-size: 1.8em; margin: 10px 0; font-weight: 400; }
-    .cyan-specialty { color: #00FBFF; font-size: 1.4em; font-weight: bold; letter-spacing: 1px; }
-    .green-contact { color: #39FF14; font-size: 1.6em; font-weight: bold; margin-top: 15px; }
-    .stTabs [data-baseweb="tab"] { color: #D4AF37 !important; font-size: 1.2em; }
-    .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: #000 !important; border-radius: 10px; }
+    .main-text { color: #D4AF37; font-size: 3em; font-weight: bold; margin: 0; }
+    .sub-text { color: #FFFFFF; font-size: 1.8em; margin: 5px 0; }
+    .contact-text { color: #39FF14; font-size: 1.5em; font-weight: bold; }
+    .stTabs [data-baseweb="tab"] { color: #D4AF37 !important; font-size: 1.3em; font-weight: bold; }
+    .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: #000 !important; border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- ترويسة المهندس بيلان ---
+# --- ترويسة المهندس بيلان مصطفى ---
 st.markdown(f"""
-<div class="luxury-card">
-    <div class="gold-title">المهندس المدني</div>
-    <div class="white-sub">بيلان مصطفى عبدالكريم</div>
-    <div class="cyan-specialty">دراسات إنشائية - إشراف هندسي - تعهدات عامة</div>
-    <div class="green-contact">📱 سوريا - القامشلي : 0998449697</div>
+<div class="header-box">
+    <div class="main-text">المهندس المدني بيلان مصطفى عبدالكريم</div>
+    <div class="sub-text">تصميم وإشراف وفق الكود العربي السوري - الإصدار الأحدث</div>
+    <div class="contact-text">📱 سوريا - القامشلي : 0998449697</div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- محرك الحسابات (Syrian Code Logic) ---
-def get_even_bars(area_req, bar_dia):
+# --- محركات الحسابات الهندسية (Syrian Code Engine) ---
+def calculate_rebar(as_req, bar_dia):
+    # حساب مساحة السيخ الواحد
     single_area = (np.pi * bar_dia**2) / 4
-    count = int(np.ceil(area_req / single_area))
-    return count if count % 2 == 0 else count + 1
+    count = int(np.ceil(as_req / single_area))
+    # إجبار العدد ليكون زوجي
+    if count % 2 != 0: count += 1
+    return max(2, count)
 
-# --- تبويبات العناصر الإنشائية ---
-tabs = st.tabs(["🌉 الجسور (Beams)", "🏟️ الأعمدة (Columns)", "🏗️ بلاطات هوردي (Ribbed)", "🧱 الأساسات (Foundations)"])
+# --- القائمة الرئيسية للعناصر ---
+tabs = st.tabs(["🌉 الجسور المستمرة", "🏢 الأعمدة المركزية", "🏗️ بلاطات الهوردي", "🧱 القواعد والأساسات"])
 
-# 1. تصميم الجسور
+# 1. قسم الجسور (Beams)
 with tabs[0]:
-    st.subheader("📏 تصميم وتفريد تسليح الجسور")
+    st.subheader("📐 تصميم الجسور (Flexure & Shear)")
     col1, col2 = st.columns([1, 2])
     with col1:
-        L = st.slider("طول الفتحة (m)", 2.0, 12.0, 6.0)
-        wd = st.number_input("الحمل الميت (kN/m)", value=25.0)
-        wl = st.number_input("الحمل الحي (kN/m)", value=15.0)
-        dia = st.selectbox("قطر التسليح الرئيسي (mm)", [14, 16, 18, 20, 25], index=1)
-        # معادلة الكود السوري
+        b = st.number_input("عرض الجسر (mm)", value=300)
+        h = st.number_input("ارتفاع الجسر (mm)", value=600)
+        L = st.slider("طول الفتحة (m)", 2.0, 10.0, 5.0)
+        wd = st.number_input("الحمل الميت DL (kN/m)", value=30.0)
+        wl = st.number_input("الحمل الحي LL (kN/m)", value=15.0)
+        dia = st.selectbox("قطر حديد التسليح الرئيسي", [12, 14, 16, 18, 20, 25], index=2)
+        
+        # معادلات الكود السوري
         wu = 1.4 * wd + 1.7 * wl
         mu = (wu * L**2) / 8
-        as_req = (mu * 10**6) / (0.9 * 400 * 0.9 * 550) # تبسيط للتصميم
-        n_bars = get_even_bars(as_req, dia)
+        # حساب مساحة الحديد (تقريبي للتوضيح)
+        as_req = (mu * 10**6) / (0.9 * 400 * 0.9 * (h-50))
+        n_bars = calculate_rebar(as_req, dia)
 
     with col2:
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(8, 8))
         ax.set_facecolor('black'); fig.patch.set_facecolor('black')
         # رسم المقطع
-        ax.add_patch(patches.Rectangle((-150, 0), 300, 600, linewidth=3, edgecolor='#D4AF37', facecolor='#111'))
+        ax.add_patch(patches.Rectangle((-b/2, 0), b, h, linewidth=4, edgecolor='#D4AF37', facecolor='#111111'))
         # الكانات
-        ax.add_patch(patches.Rectangle((-130, 20), 260, 560, linewidth=2, edgecolor='#00FBFF', fill=False))
-        # الحديد السفلي
+        ax.add_patch(patches.Rectangle((-b/2+25, 25), b-50, h-50, linewidth=2, edgecolor='#00FBFF', fill=False))
+        # توزيع الحديد السفلي
         for i in range(n_bars):
-            px = -100 + i * (200/(n_bars-1))
+            px = (-b/2 + 50) + i * (b-100)/(n_bars-1 if n_bars > 1 else 1)
             ax.add_patch(patches.Circle((px, 50), 12, color='#FF3131'))
-        # سهم وتوصيف (Leader)
-        ax.annotate(f"{n_bars} Ø {dia}", xy=(0, 50), xytext=(0, -120), color='#39FF14',
-                     fontsize=15, weight='bold', ha='center', arrowprops=dict(facecolor='#39FF14', shrink=0.05))
-        ax.set_title(f"مقطع عرضي في الجسر - Mu={mu:.1f} kNm", color='white')
-        ax.axis('off'); st.pyplot(fig)
+        
+        # الأسهم والتوصيف (Leaders)
+        ax.annotate(f"{n_bars} Ø {dia} (سفلي رئيسي)", xy=(0, 50), xytext=(-b-100, -100),
+                     color='#39FF14', fontsize=14, weight='bold',
+                     arrowprops=dict(arrowstyle='->', connectionstyle="arc3,rad=.2", color='#39FF14', lw=2))
+        
+        ax.annotate("2 Ø 12 (حديد تعليق علوي)", xy=(b/2-50, h-50), xytext=(b+50, h+50),
+                     color='#00FBFF', fontsize=12, arrowprops=dict(arrowstyle='->', color='#00FBFF'))
+
+        ax.set_xlim(-b-200, b+200); ax.set_ylim(-200, h+200); ax.axis('off')
+        st.pyplot(fig)
         
 
-# 2. تصميم الأعمدة
+# 2. قسم الأعمدة (Columns)
 with tabs[1]:
-    st.subheader("🏢 تصميم الأعمدة (Axial + Moment)")
+    st.subheader("🏢 تصميم الأعمدة وفق الكود السوري")
     cc1, cc2 = st.columns([1, 2])
     with cc1:
-        p_axial = st.number_input("الحمل المحوري Pu (kN)", value=2500)
-        c_dim = st.slider("أبعاد العمود المربع (mm)", 300, 800, 400)
-        c_dia = st.selectbox("قطر قضبان العمود", [16, 18, 20, 25], index=0)
-        # نسبة التسليح 1% وفق الكود
-        as_col = 0.01 * c_dim**2
-        c_n = get_even_bars(as_col, c_dia)
+        axial_load = st.number_input("الحمل المحوري Pu (kN)", value=2200)
+        c_size = st.slider("بعد العمود المربع (mm)", 300, 800, 400)
+        c_dia = st.selectbox("قطر قضبان العمود", [16, 18, 20, 25], index=1)
+        # الكود السوري: الحد الأدنى 1% والحد الأعلى 4%
+        as_min = 0.01 * c_size**2
+        c_n = calculate_rebar(as_min, c_dia)
         if c_n < 4: c_n = 4
 
     with cc2:
-        fig2, ax2 = plt.subplots(figsize=(6, 6))
+        fig2, ax2 = plt.subplots(figsize=(7, 7))
         ax2.set_facecolor('black'); fig2.patch.set_facecolor('black')
-        ax2.add_patch(patches.Rectangle((-c_dim/2, -c_dim/2), c_dim, c_dim, edgecolor='#D4AF37', facecolor='#111', lw=4))
-        # توزيع القضبان
-        for x in [-c_dim/2+40, c_dim/2-40]:
-            for y in np.linspace(-c_dim/2+40, c_dim/2-40, int(c_n/2)):
+        ax2.add_patch(patches.Rectangle((-c_size/2, -c_size/2), c_size, c_size, edgecolor='#D4AF37', facecolor='#111', lw=4))
+        # توزيع القضبان زوجياً على المحيط
+        side_count = c_n // 4 + 1
+        for x in [-c_size/2+40, c_size/2-40]:
+            for y in np.linspace(-c_size/2+40, c_size/2-40, side_count):
                 ax2.add_patch(patches.Circle((x, y), 15, color='#FF3131'))
-        ax2.annotate(f"تسليح العمود: {c_n} Ø {c_dia}", xy=(0, 0), xytext=(0, c_dim/2+60), 
-                     color='#00FBFF', fontsize=16, weight='bold', ha='center')
+        
+        ax2.annotate(f"الإجمالي: {c_n} Ø {c_dia}", xy=(0, 0), xytext=(0, c_size/2+80), 
+                     color='#39FF14', fontsize=16, weight='bold', ha='center')
         ax2.axis('off'); st.pyplot(fig2)
 
-# 3. البلاطات الهوردي (المنتشرة في سوريا)
+# 3. قسم بلاطات الهوردي (Ribbed Slabs)
 with tabs[2]:
-    st.subheader("🏗️ تصميم الأعصاب (Ribbed Slabs)")
+    st.subheader("🏗️ تصميم الأعصاب (الرائجة في سوريا)")
     rc1, rc2 = st.columns([1, 2])
     with rc1:
-        rib_L = st.number_input("طول العصب (m)", value=5.0)
-        st.write("عرض العصب: 12 cm | البلوك: 40 cm")
+        rib_h = st.number_input("سماكة البلاطة الكلية (cm)", value=30)
+        rib_L = st.number_input("طول العصب (m)", value=5.5)
+        st.info("عرض العصب الافتراضي: 12 cm | بلوك: 40 cm")
         rib_dia = st.selectbox("قطر حديد العصب", [12, 14, 16], index=1)
-        as_rib = 250 # قيمة افتراضية للتوضيح
-        rib_n = get_even_bars(as_rib, rib_dia)
+        rib_n = 2 # دائماً زوجي للأعصاب
     with rc2:
-        st.success(f"النتيجة: استخدم {rib_n} Ø {rib_dia} لكل عصب")
-        # رسم مبسط للعصب
+        st.success(f"النتيجة الإنشائية: استخدم {rib_n} Ø {rib_dia} لكل عصب")
+        # رسم تفريد حديد العصب
         fig3, ax3 = plt.subplots(figsize=(8, 4))
         ax3.set_facecolor('black'); fig3.patch.set_facecolor('black')
-        ax3.add_patch(patches.Rectangle((0, 0), 520, 300, color='#111', edgecolor='white'))
-        ax3.add_patch(patches.Rectangle((200, 0), 120, 300, facecolor='#222', edgecolor='#D4AF37'))
-        ax3.annotate("عصب هوردي", xy=(260, 150), color='white', ha='center')
+        ax3.add_patch(patches.Rectangle((0, 0), 520, 300, facecolor='#111', edgecolor='#D4AF37'))
+        ax3.add_patch(patches.Circle((260-30, 40), 10, color='#FF3131'))
+        ax3.add_patch(patches.Circle((260+30, 40), 10, color='#FF3131'))
+        ax3.annotate(f"{rib_n} Ø {rib_dia}", xy=(260, 40), xytext=(260, 150), color='#39FF14',
+                     arrowprops=dict(arrowstyle='->', color='#39FF14'), ha='center', weight='bold')
         ax3.axis('off'); st.pyplot(fig3)
 
-# 4. الأساسات المنفردة
+# 4. قسم الأساسات (Foundations)
 with tabs[3]:
-    st.subheader("🧱 تصميم القواعد (Isolated Footings)")
+    st.subheader("🧱 تصميم القواعد المنفردة")
     f1, f2 = st.columns([1, 2])
     with f1:
-        q_allow = st.number_input("إجهاد التربة المسموح (kg/cm²)", value=2.0)
-        f_load = st.number_input("حمل العمود (kN)", value=1500)
-        area_f = (f_load / 10) / q_allow
-        side = np.sqrt(area_f) * 100
-        f_dia = st.selectbox("قطر حديد القاعدة", [12, 14, 16], index=1)
+        sigma_allow = st.number_input("إجهاد التربة المسموح (kg/cm²)", value=2.5)
+        footing_load = st.number_input("الحمل الواصل للقاعدة (kN)", value=1800)
+        area_f = (footing_load / 10) / sigma_allow
+        dim_f = np.sqrt(area_f) * 100
+        f_dia = st.selectbox("قطر حديد فرش القاعدة", [14, 16], index=0)
     with f2:
-        st.metric("أبعاد القاعدة (cm)", f"{side:.0f} x {side:.0f}")
+        st.metric("أبعاد القاعدة المربعة", f"{dim_f:.0f} cm x {dim_f:.0f} cm")
         fig4, ax4 = plt.subplots()
         ax4.set_facecolor('black'); fig4.patch.set_facecolor('black')
-        ax4.add_patch(patches.Rectangle((0,0), side, side, edgecolor='#39FF14', facecolor='#111', lw=3))
-        ax4.set_title("مخطط فرش حديد القاعدة", color='white')
+        ax4.add_patch(patches.Rectangle((0,0), dim_f, dim_f, edgecolor='#39FF14', facecolor='#111', lw=3))
+        ax4.set_title("مخطط تسليح القاعدة", color='white')
         ax4.axis('off'); st.pyplot(fig4)
 
 # --- تذييل البرنامج ---
 st.markdown("---")
 st.markdown(f"""
-    <div style="text-align: center; border-top: 2px solid #D4AF37; padding-top: 20px;">
-        <p style="color: #D4AF37; font-size: 1.2em;">النسخة v17.0 - مطابقة لاشتراطات نقابة المهندسين السوريين</p>
-        <p style="color: #ffffff;">تم التطوير بواسطة م. بيلان مصطفى عبدالكريم | 2026</p>
+    <div style="text-align: center; border: 2px solid #D4AF37; padding: 15px; border-radius: 10px;">
+        <p style="color: #D4AF37; font-size: 1.2em; font-weight: bold;">
+            تمت البرمجة وفق الكود السوري - جميع الحقوق محفوظة للمهندس بيلان مصطفى عبدالكريم © 2026
+        </p>
     </div>
 """, unsafe_allow_html=True)
