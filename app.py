@@ -2,201 +2,192 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
-# محاولة استيراد مكتبة الرسم، وإذا لم تكن موجودة نعطي تنبيهاً
-try:
-    from streamlit_drawable_canvas import st_canvas
-except ImportError:
-    st.error("⚠️ يجب تثبيت مكتبة الرسم! الرجاء كتابة: pip install streamlit-drawable-canvas")
-    st.stop()
-
-# --- إعدادات الصفحة ---
-st.set_page_config(page_title="Pelan Engineering Station", layout="wide")
-
-# --- تنسيق CSS لجعله يشبه البرامج الهندسية (Dark Theme) ---
-st.markdown("""
-<style>
-    .stApp {background-color: #0e1117; color: #fafafa;}
-    h1, h2, h3 {color: #00bcd4 !important;}
-    .stButton>button {border-radius: 5px; background-color: #262730; color: #00bcd4; border: 1px solid #00bcd4;}
-    .stButton>button:hover {background-color: #00bcd4; color: black;}
-</style>
-""", unsafe_allow_html=True)
+# إعدادات هندسية متقدمة
+st.set_page_config(page_title="Pelan Structural Expert v14", layout="wide")
 
 # --- الختم الهندسي (سوريا - القامشلي) ---
-with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/engineer.png", width=70)
-    st.markdown("""
-    <div style="text-align: center;">
-        <h2 style="color:#00bcd4; margin:0;">Eng. Pelan Mustfa</h2>
-        <h4 style="color:#b0bec5; margin:0;">Abdulkarim</h4>
-        <hr>
-        <p style="font-weight:bold; color:#fbc02d; font-size:1.2em;">📱 0998449697</p>
-        <p style="color:#ffffff;">📍 Syria - Qamishli</p>
-        <div style="background-color:#1c2026; padding:10px; border-radius:5px; margin-top:10px;">
-            <small>✅ AutoCAD Engine<br>✅ ETABS Solver<br>✅ SAFE Detailing<br>✅ Revit BIM</small>
-        </div>
+def apply_syrian_stamp():
+    st.sidebar.markdown(f"""
+    <div style="background-color:#0f172a; padding:20px; border-radius:15px; border-right: 10px solid #ef4444; color:white; text-align:right; direction:rtl;">
+        <h2 style="color:#38bdf8; margin:0;">المهندس بيلان مصطفى</h2>
+        <h3 style="color:#f3f4f6; margin-top:5px;">عبدالكريم</h3>
+        <p style="color:#fbbf24; font-size:1.1em; font-weight:bold; margin-top:10px;">🇸🇾 سوريا - القامشلي</p>
+        <p style="color:#fbbf24; font-size:1.3em; font-weight:bold;">📱 0998449697</p>
+        <hr style="border-color:#1f2937;">
+        <p style="font-size:0.85em; opacity:0.8;">خبير التحليل الإنشائي وفق الكود السوري<br>AutoCAD | ETABS | SAFE | Revit</p>
     </div>
     """, unsafe_allow_html=True)
 
-# --- الواجهة الرئيسية ---
-st.title("🏗️ Pelan Integrated Structural System")
-st.markdown("---")
+apply_syrian_stamp()
 
-# التبويبات
-tab1, tab2, tab3, tab4 = st.tabs(["📐 AutoCAD (Drawing)", "📉 ETABS (Analysis)", "🏗️ SAFE (Design)", "🧱 Revit (BBS)"])
+# --- محرك الحسابات التلقائي (الذكاء الإنشائي) ---
+st.title("🏗️ Pelan Integrated Engineering Terminal (V14)")
+st.caption("النظام المتكامل للتحليل والتصميم والتفصيل الإنشائي - مخصص للمهندس بيلان مصطفى")
 
-# =========================================================
-# 1. AutoCAD Tab (أدوات رسم حقيقية)
-# =========================================================
-with tab1:
-    st.header("AutoCAD Canvas Simulation")
-    st.info("💡 المتصفح لا يعرض DWG مباشرة. يمكنك رفع صورة للمخطط (JPG) للرسم فوقها، أو الرسم الحر بالأدوات أدناه.")
+tabs = st.tabs(["📊 ETABS: Analysis & Diagrams", "🏗️ SAFE: Syrian Code Design", "📐 AutoCAD: Detailing & Drafting"])
+
+# 1. قسم الإيتابس: التحليل، القص، العزم، وردود الأفعال
+with tabs[0]:
+    st.header("📉 التحليل الإنشائي وردود الأفعال")
+    col_in, col_diag = st.columns([1, 2])
     
-    c1, c2 = st.columns([1, 4])
-    with c1:
-        st.subheader("Tools (الأدوات)")
-        # أدوات حقيقية للرسم
-        tool = st.radio("اختر الأداة:", ["freedraw", "line", "rect", "circle", "transform"], index=1)
-        stroke_width = st.slider("سماكة الخط:", 1, 10, 2)
-        stroke_color = st.color_picker("لون الخط:", "#00ff00")
+    with col_in:
+        st.subheader("المعطيات (Inputs)")
+        L = st.number_input("طول الجسر (Span) [m]", value=6.0)
+        w_d = st.number_input("الحمولات الميتة (Dead Load) [kN/m]", value=20.0)
+        w_l = st.number_input("الحمولات الحية (Live Load) [kN/m]", value=10.0)
         
-        # محاكاة رفع ملف DWG (للتخزين فقط)
-        uploaded_file = st.file_uploader("Upload DWG File (Storage Only)", type=['dwg', 'dxf'])
-        if uploaded_file:
-            st.success(f"File '{uploaded_file.name}' loaded into project memory.")
-
-        # رفع خلفية للرسم عليها
-        bg_image = st.file_uploader("Upload Plan Image to Trace (JPG/PNG)", type=["png", "jpg"])
-
-    with c2:
-        st.write("**Work Area (Drawing Space):**")
-        # هذه هي الأداة التي تجعلك ترسم بيدك
-        canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",
-            stroke_width=stroke_width,
-            stroke_color=stroke_color,
-            background_color="#000000", # شاشة سوداء
-            background_image=plt.imread(bg_image) if bg_image else None,
-            update_streamlit=True,
-            height=500,
-            drawing_mode=tool,
-            key="canvas",
-        )
-        st.caption("Coordinates: Active | Ortho: On | Snap: On")
-
-# =========================================================
-# 2. ETABS Tab (حسابات إنشائية فعلية)
-# =========================================================
-with tab2:
-    st.header("ETABS: Structural Analysis Solver")
-    
-    # مدخلات حقيقية للحساب
-    col_in1, col_in2, col_in3 = st.columns(3)
-    with col_in1:
-        L = st.number_input("Beam Span (Length) [m]", value=5.0, step=0.5)
-    with col_in2:
-        DL = st.number_input("Dead Load [kN/m]", value=12.0)
-    with col_in3:
-        LL = st.number_input("Live Load [kN/m]", value=8.0)
+        st.divider()
+        st.subheader("أنواع المساند (Supports)")
+        support_left = st.selectbox("المسند الأيسر", ["Fixed (وثاقة)", "Pinned (مفصل)", "Roller (بسيط)"])
+        support_right = st.selectbox("المسند الأيمن", ["Fixed (وثاقة)", "Pinned (مفصل)", "Roller (بسيط)"])
         
-    # معادلات فيزيائية حقيقية (وليست أرقام عشوائية)
-    Wu = (1.2 * DL) + (1.6 * LL)   # Ultimate Load
-    Mu = (Wu * L**2) / 8           # Max Moment
-    Vu = (Wu * L) / 2              # Max Shear
+        # معادلات الكود السوري (تراكيب الأحمال)
+        wu = (1.4 * w_d) + (1.7 * w_l)
+        st.warning(f"الحمل التصميمي Wu = {wu:.2f} kN/m")
+
+    with col_diag:
+        # حسابات العزوم والقص وردود الأفعال بناءً على نوع المساند
+        # تبسيط للحالة الأكثر شيوعاً (وثاقة من الطرفين)
+        if support_left == "Fixed (وثاقة)" and support_right == "Fixed (وثاقة)":
+            m_max_neg = (wu * L**2) / 12
+            m_max_pos = (wu * L**2) / 24
+            v_max = (wu * L) / 2
+            r_total = v_max
+        else: # حالة مساند بسيطة
+            m_max_neg = 0
+            m_max_pos = (wu * L**2) / 8
+            v_max = (wu * L) / 2
+            r_total = v_max
+
+        st.subheader("مخططات القص والعزم (SFD & BMD)")
+        
+        # الرسم البياني
+        x = np.linspace(0, L, 100)
+        # دالة تقريبية للعزم بناء على النوع
+        y_m = (wu * x / 2) * (L - x) - (m_max_neg) 
+        y_v = wu * (L/2 - x)
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+        plt.subplots_adjust(hspace=0.5)
+        
+        # رسم العزم
+        ax1.plot(x, y_m, color='yellow', label='Moment (kNm)')
+        ax1.fill_between(x, y_m, color='yellow', alpha=0.2)
+        ax1.set_title("Bending Moment Diagram (BMD)")
+        ax1.grid(True, alpha=0.3)
+        
+        # رسم القص
+        ax2.plot(x, y_v, color='cyan', label='Shear (kN)')
+        ax2.fill_between(x, y_v, color='cyan', alpha=0.2)
+        ax2.set_title("Shear Force Diagram (SFD)")
+        ax2.grid(True, alpha=0.3)
+        
+        st.pyplot(fig)
+        
+        # عرض ردود الأفعال
+        st.success(f"Reaction R1: {r_total:.2f} kN | Reaction R2: {r_total:.2f} kN")
+
+# 2. قسم السيف: التصميم وفق الكود السوري
+with tabs[1]:
+    st.header("🏗️ التصميم الإنشائي - الكود العربي السوري")
+    sc1, sc2 = st.columns(2)
     
+    with sc1:
+        st.subheader("خصائص المواد")
+        fc = st.selectbox("مقاومة الخرسانة f'c (MPa)", [20, 25, 30, 35], index=1)
+        fy = st.selectbox("إجهاد الخضوع للحديد fy (MPa)", [240, 400, 420], index=1)
+        b = st.number_input("عرض المقطع (b) [mm]", value=300)
+        h = st.number_input("ارتفاع المقطع (h) [mm]", value=600)
+    
+    with sc2:
+        # حساب الحديد المطلوبة (معادلات الكود السوري)
+        d = h - 50 # Cover
+        Rn = (m_max_pos * 10**6) / (0.9 * b * d**2)
+        rho = (0.85 * fc / fy) * (1 - np.sqrt(1 - (2 * Rn / (0.85 * fc))))
+        as_req = rho * b * d
+        
+        st.subheader("النتائج النهائية (Results)")
+        st.info(f"مساحة الحديد المطلوبة: {as_req:.2f} mm²")
+        
+        # اختيار الأقطار تلقائياً
+        bar_size = st.selectbox("اختر قطر التسليح الرئيسي [mm]", [14, 16, 18, 20, 25])
+        bar_area = (np.pi * bar_size**2) / 4
+        num_bars = int(np.ceil(as_req / bar_area))
+        if num_bars < 2: num_bars = 2
+        
+        st.success(f"التسليح المقترح: {num_bars} Ø {bar_size}")
+
+# 3. قسم الأوتوكاد: الرسم التفصيلي الدقيق مع الأسهم والتفريد
+with tabs[2]:
+    st.header("📐 AutoCAD Detailing (الرسم الفني والتفريد)")
+    st.write("تم توليد الرسم التفصيلي بناءً على حسابات الكود السوري.")
+    
+    # رسم مقطع عرضي للجسر مع الأسهم والتوصيفات
+    fig_cad, ax = plt.subplots(figsize=(10, 8))
+    
+    # 1. رسم خرسانة المقطع
+    rect = patches.Rectangle((b/2*-1, 0), b, h, linewidth=3, edgecolor='white', facecolor='#262730')
+    ax.add_patch(rect)
+    
+    # 2. رسم الكانات (Stirrups)
+    stirrup = patches.Rectangle(((b/2*-1)+25, 25), b-50, h-50, linewidth=2, edgecolor='cyan', fill=False)
+    ax.add_patch(stirrup)
+    
+    # 3. رسم الحديد السفلي (Main Bottom)
+    for i in range(num_bars):
+        pos_x = (b/2*-1) + 50 + (i * (b-100)/(num_bars-1 if num_bars>1 else 1))
+        circle = patches.Circle((pos_x, 50), 8, color='red')
+        ax.add_patch(circle)
+        if i == 0: # سهم وتوصيف للحديد السفلي
+            ax.annotate(f"{num_bars} Ø {bar_size} (Bottom)", xy=(pos_x, 50), xytext=(pos_x-150, -100),
+                         arrowprops=dict(facecolor='white', shrink=0.05, width=1))
+
+    # 4. رسم حديد التعليق (Hangers)
+    ax.add_patch(patches.Circle(((b/2*-1)+50, h-50), 6, color='orange'))
+    ax.add_patch(patches.Circle(((b/2)-50, h-50), 6, color='orange'))
+    ax.annotate("2 Ø 12 (Hangers)", xy=((b/2)-50, h-50), xytext=(b/2+100, h+50),
+                 arrowprops=dict(facecolor='white', shrink=0.05, width=1))
+
+    # 5. رسم حديد البرندات (Side Bars)
+    if h > 600:
+        ax.add_patch(patches.Circle(((b/2*-1)+40, h/2), 5, color='green'))
+        ax.add_patch(patches.Circle(((b/2)-40, h/2), 5, color='green'))
+        ax.annotate("2 Ø 10 (Side Bars)", xy=((b/2)-40, h/2), xytext=(b/2+100, h/2),
+                     arrowprops=dict(facecolor='white', shrink=0.05, width=1))
+
+    # إعدادات الرسم
+    ax.set_xlim(-500, 500)
+    ax.set_ylim(-200, 800)
+    ax.set_aspect('equal')
+    ax.axis('off')
+    ax.set_facecolor('#0e1117')
+    fig_cad.patch.set_facecolor('#0e1117')
+    
+    st.pyplot(fig_cad)
+    
+    
+
+    # تصدير التقرير النهائي
     st.divider()
-    
-    # عرض النتائج
-    r1, r2, r3 = st.columns(3)
-    r1.metric("Ultimate Load (Wu)", f"{Wu:.2f} kN/m")
-    r2.metric("Max Moment (Mu)", f"{Mu:.2f} kN.m", delta="Critical")
-    r3.metric("Max Shear (Vu)", f"{Vu:.2f} kN")
-    
-    # رسم المخطط بيانيا (Matplotlib)
-    st.subheader("Bending Moment Diagram (BMD)")
-    x = np.linspace(0, L, 100)
-    y = (Wu * x / 2) * (L - x) # معادلة العزم
-    
-    fig, ax = plt.subplots(figsize=(10, 3))
-    ax.plot(x, y, color='#ffeb3b', linewidth=2)
-    ax.fill_between(x, y, color='#ffeb3b', alpha=0.3)
-    ax.set_facecolor('#262730')
-    fig.patch.set_facecolor('#0e1117')
-    ax.tick_params(axis='x', colors='white')
-    ax.tick_params(axis='y', colors='white')
-    ax.set_title(f"BMD for Beam L={L}m", color='white')
-    st.pyplot(fig)
-
-# =========================================================
-# 3. SAFE Tab (تصميم التسليح بناء على الحساب)
-# =========================================================
-with tab3:
-    st.header("SAFE: Reinforcement Auto-Design")
-    
-    # استيراد النتائج من الإيتابس
-    st.info(f"Designing for Moment Mu = {Mu:.2f} kN.m")
-    
-    # خصائص المواد
-    fc = st.selectbox("Concrete f'c (MPa)", [25, 30, 35])
-    fy = st.selectbox("Steel fy (MPa)", [400, 420, 500])
-    
-    # حساب مساحة الحديد الحقيقية (Formula)
-    d = 450 # depth in mm (assumption)
-    # As = Mu / (0.9 * fy * 0.9 * d) approximation
-    As_req = (Mu * 1e6) / (0.9 * fy * 0.9 * d)
-    
-    st.write(f"**Required Steel Area (As):** {As_req:.2f} mm²")
-    
-    # تحذير هندسي
-    if As_req > 2500:
-        st.error("⚠️ المقطع يحتاج تسليح عالي جداً! يرجى زيادة عمق الجسر.")
-    else:
-        st.success("✅ التصميم آمن (Safe Design).")
-    
-    # جدول التفاصيل
-    safe_data = {
-        "Position": ["Bottom Rebar (Main)", "Top Rebar (Support)", "Stirrups (Shear)"],
-        "Calculated As (mm²)": [f"{As_req:.1f}", f"{As_req*0.4:.1f}", "Shear Calc"],
-        "Suggested Detail": [
-            f"{int(As_req/200)+1} Ø 16 mm", 
-            "3 Ø 14 mm", 
-            "Ø 10 mm @ 150 mm"
-        ],
-        "Verification": ["OK", "OK", "OK"]
+    st.subheader("📋 ملخص جدول الكميات (BBS)")
+    final_data = {
+        "نوع الحديد": ["تسليح سفلي رئيسي", "حديد تعليق علوي", "كانات مقاومة قص", "حديد برندات"],
+        "العدد": [num_bars, 2, f"{int(L/0.15)}", 2 if h > 600 else 0],
+        "القطر (mm)": [bar_size, 12, 10, 10],
+        "التوصيف": [f"{num_bars} Ø {bar_size}", "2 Ø 12", "Ø 10 @ 150mm", "2 Ø 10"],
+        "الكود": ["Syrian-Main", "Syrian-Hanger", "Syrian-Stirrup", "Syrian-Side"]
     }
-    st.table(pd.DataFrame(safe_data))
+    st.table(pd.DataFrame(final_data))
 
-# =========================================================
-# 4. Revit Tab (جدول الكميات والتكلفة)
-# =========================================================
-with tab4:
-    st.header("Revit BIM: Quantity Takeoff (BBS)")
-    
-    # حساب الكميات الحقيقي
-    beams_count = st.slider("عدد الجسور المماثلة:", 1, 50, 10)
-    
-    vol_conc = beams_count * L * 0.3 * 0.5  # assuming 30x50 section
-    weight_steel = beams_count * L * 15     # assuming 15kg/m
-    
-    st.subheader("Project Bill of Quantities")
-    
-    bbs_df = pd.DataFrame({
-        "Material": ["Concrete (C30)", "Steel Rebar (G60)", "Formwork"],
-        "Unit": ["m³", "kg", "m²"],
-        "Quantity": [f"{vol_conc:.2f}", f"{weight_steel:.2f}", f"{beams_count * L * 1.6:.2f}"],
-        "Unit Price ($)": [85, 0.90, 12],
-        "Total Cost ($)": [vol_conc*85, weight_steel*0.9, (beams_count*L*1.6)*12]
-    })
-    
-    st.dataframe(bbs_df, use_container_width=True)
-    
-    # التحميل
-    csv = bbs_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        "📥 Download Official BBS Report (Eng. Pelan)",
-        csv,
-        "Pelan_Project_Qamishli.csv",
-        "text/csv"
-    )
-
+# --- التذييل الرسمي ---
+st.markdown("---")
+st.markdown(f"""
+    <div style="text-align: center; border: 2px solid #38bdf8; padding: 20px; border-radius: 10px;">
+        <h2 style="color:#38bdf8; margin:0;">المهندس بيلان مصطفى عبدالكريم</h2>
+        <p style="font-size:1.2em;">خبير الإدارة الهندسية والتحليل الإنشائي وفق الكود العربي السوري</p>
+        <p style="font-weight:bold; color:#fbbf24; font-size:1.5em;">📱 0998449697 | 📍 سوريا - القامشلي</p>
+    </div>
+""", unsafe_allow_html=True)
