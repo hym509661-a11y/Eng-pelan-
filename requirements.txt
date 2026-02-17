@@ -1,2 +1,5 @@
 streamlit
-ezdxf
+pandas
+numpy
+plotly
+openpyxl
