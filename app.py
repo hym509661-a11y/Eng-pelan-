@@ -2,85 +2,81 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
-st.set_page_config(page_title="Jawad Expert Engine", layout="wide")
+st.set_page_config(page_title="Jawad Frame Pro", layout="wide")
 
-class JawadMasterEngine:
+class FrameEngine:
     @staticmethod
-    def solve_with_boundary_conditions(spans, loads, start_fixity, end_fixity):
-        """
-        محرك تحليل إنشائي يأخذ بعين الاعتبار نوع المساند الطرفية (وثاقة أو استناد بسيط)
-        """
-        n = len(spans)
-        num_eq = n + 1
-        A = np.zeros((num_eq, num_eq))
-        B = np.zeros(num_eq)
+    def calculate_distribution_factors(l_beam, i_beam, h_col_top, i_col_top, h_col_bot, i_col_bot):
+        # حساب الجساءة K = I/L
+        k_beam = i_beam / l_beam
+        k_col_t = i_col_top / h_col_top
+        k_col_b = i_col_bot / h_col_bot
+        
+        sum_k = k_beam + k_col_t + k_col_b
+        
+        # معاملات التوزيع (Distribution Factors) - جوهر التحليل الإطاري
+        df_beam = k_beam / sum_k
+        df_col_t = k_col_t / sum_k
+        df_col_b = k_col_b / sum_k
+        
+        return df_beam, df_col_t, df_col_b
 
-        # بناء مصفوفة المعادلات (Modified Three-Moment Equation)
-        for i in range(1, n):
-            L1, L2 = spans[i-1], spans[i]
-            w1, w2 = loads[i-1], loads[i]
-            A[i, i-1] = L1
-            A[i, i] = 2 * (L1 + L2)
-            A[i, i+1] = L2
-            B[i] = -(w1 * L1**3 / 4 + w2 * L2**3 / 4)
-
-        # شرط المسند البداية
-        if start_fixity == "وثاقة (Fixed)":
-            A[0, 0], A[0, 1] = 2 * spans[0], spans[0]
-            B[0] = -(loads[0] * spans[0]**3 / 4)
-        else: # بسيط (Pinned)
-            A[0, 0] = 1
-            B[0] = 0
-
-        # شرط المسند النهاية
-        if end_fixity == "وثاقة (Fixed)":
-            A[n, n-1], A[n, n] = spans[-1], 2 * spans[-1]
-            B[n] = -(loads[-1] * spans[-1]**3 / 4)
-        else: # بسيط (Pinned)
-            A[n, n] = 1
-            B[n] = 0
-
-        moments = np.linalg.solve(A, B)
-        return list(moments)
-
-st.title("🏗️ محرك الجواد الاحترافي (شروط الاستناد المتغيرة)")
+st.title("🏗️ وحدة تحليل الإطارات (الجوائز المترابطة مع الأعمدة)")
+st.info("التحليل يعتمد على انتقال العزوم بين الجائز والأعمدة بناءً على جساءة كل عنصر (Hardcore Engineering)")
 
 with st.sidebar:
-    st.header("⚙️ إعدادات المساند")
-    start_f = st.selectbox("المسند الأول (Start)", ["بسيط (Pinned)", "وثاقة (Fixed)"])
-    end_f = st.selectbox("المسند الأخير (End)", ["بسيط (Pinned)", "وثاقة (Fixed)"])
-    st.divider()
-    n_spans = st.number_input("عدد الفتحات", 1, 5, 2)
-    b, h = 300, 600
-
-spans, loads = [], []
-cols = st.columns(n_spans)
-for i in range(n_spans):
-    with cols[i]:
-        L = st.number_input(f"طول الفتحة {i+1} (m)", value=5.0, key=f"L{i}")
-        w = st.number_input(f"الحمل {i+1} (kN/m)", value=30.0, key=f"W{i}")
-        spans.append(L)
-        loads.append(w)
-
-if st.button("🚀 تحليل إنشائي دقيق"):
-    m_supports = JawadMasterEngine.solve_with_boundary_conditions(spans, loads, start_f, end_f)
+    st.header("📏 أبعاد الجائز (Beam)")
+    l_b = st.number_input("طول الجائز (m)", value=6.0)
+    b_b = st.number_input("عرض الجائز (mm)", value=300)
+    h_b = st.number_input("ارتفاع الجائز (mm)", value=600)
     
-    st.subheader("📊 مخرجات التحليل (العزوم عند المساند)")
-    
-    # عرض العزوم
-    m_data = [{"المسند": i, "العزم (kNm)": round(abs(m), 2)} for i, m in enumerate(m_supports)]
-    st.table(pd.DataFrame(m_data))
+    st.header("🏢 أبعاد الأعمدة (Columns)")
+    b_c = st.number_input("عرض العمود (mm)", value=400)
+    h_c = st.number_input("عمق العمود (mm)", value=400)
+    h_stack = st.number_input("ارتفاع الطابق (m)", value=3.0)
 
-    
+# حساب عزوم العطالة (Moment of Inertia)
+i_beam = (b_b * h_b**3) / 12
+i_col = (b_c * h_c**3) / 12
 
-    # حساب وتسليح
-    st.subheader("🏗️ تفاصيل التسليح بناءً على نوع المساند")
-    for i in range(n_spans):
-        m_max = max(abs(m_supports[i]), abs(m_supports[i+1]))
-        # حساب تقريبي لعزم المنتصف بناءً على شروط الاستناد
-        m_span = (loads[i] * spans[i]**2 / 8) - (abs(m_supports[i]) + abs(m_supports[i+1]))/2
-        
-        st.write(f"**الفتحة {i+1}:** العزم السالب الأكبر = {round(m_max,1)} | العزم الموجب = {round(abs(m_span),1)}")
+# حساب معاملات التوزيع عند العقدة
+df_b, df_ct, df_cb = FrameEngine.calculate_distribution_factors(l_b, i_beam, h_stack, i_col, h_stack, i_col)
 
+st.subheader("📊 معاملات توزيع العزوم عند العقدة (Joint D.F)")
+c1, c2, c3 = st.columns(3)
+c1.metric("للحمال (Beam)", f"{round(df_b, 3)}")
+c2.metric("للعمود العلوي", f"{round(df_ct, 3)}")
+c3.metric("للعمود السفلي", f"{round(df_cb, 3)}")
+
+# التحليل الإنشائي (Moment Distribution)
+w_total = st.number_input("الحمل الموزع على الجائز (kN/m)", value=40.0)
+fem = (w_total * l_b**2) / 12 # عزم الوثاقة الابتدائي
+
+m_beam = fem * (1 - df_b) # العزم الذي سيبقى في الجائز بعد التوزيع
+m_col_total = fem * df_b  # العزم الذي سينتقل للأعمدة
+
+st.divider()
+st.subheader("📉 نتائج العزوم المترابطة (Frame Moments)")
+
+
+
+res_col1, res_col2 = st.columns(2)
+with res_col1:
+    st.write(f"**عزم الوثاقة الابتدائي (FEM):** {round(fem, 2)} kNm")
+    st.write(f"**العزم النهائي في الجائز عند المسند:** {round(m_beam, 2)} kNm")
+    st.success(f"**العزم المنقول للأعمدة:** {round(m_col_total, 2)} kNm")
+
+with res_col2:
+    st.info("توزيع العزم على الأعمدة:")
+    st.write(f"- العمود العلوي: {round(m_col_total * (df_ct/(df_ct+df_cb)), 2)} kNm")
+    st.write(f"- العمود السفلي: {round(m_col_total * (df_cb/(df_ct+df_cb)), 2)} kNm")
+
+st.divider()
+st.subheader("🏗️ تصميم تسليح العقدة (Joint Detailing)")
+st.write("بناءً على العزوم أعلاه، يجب تأمين طول تشريك كافٍ لحديد الجائز داخل العمود.")
+
+
+
+# التذييل المطلوب
 st.markdown("---")
 st.write("للتواصل والدعم الفني: **0998449697**")
