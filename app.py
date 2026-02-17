@@ -2,41 +2,60 @@ import streamlit as st
 import ezdxf
 import io
 
-def create_dxf_with_stamp(text_content):
-    # إنشاء ملف DXF جديد
+# إعدادات الصفحة
+st.set_page_config(page_title="مهندس بلان - محرر الأوتوكاد", layout="centered")
+
+def create_stamped_dxf(base_text):
+    # 1. إنشاء ملف DXF جديد (إصدار متوافق R2010)
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
 
-    # إضافة المحتوى الأساسي للرسم هنا (اختياري)
-    msp.add_text("Original Content", dxfattribs={'height': 0.5}).set_placement((0, 2))
+    # 2. إعداد نص الختم مع الرقم المطلوب في الذاكرة المحفوظة
+    # النص سيظهر كالتالي: [نص المستخدم] | 0998449697
+    final_stamp = f"{base_text} - 0998449697"
 
-    # إضافة الختم مع الرقم المطلوب في نهاية الختم
-    # الرقم: 0998449697
-    stamp_text = f"{text_content} | Mob: 0998449697"
-    
-    # إضافة النص في أسفل الرسم كختم
-    msp.add_text(stamp_text, 
-                 dxfattribs={
-                     'height': 0.7, 
-                     'color': 1 # اللون الأحمر مثلاً
-                 }).set_placement((0, 0))
+    # 3. إضافة الختم إلى الرسم (الإحداثيات 0,0)
+    msp.add_text(
+        final_stamp,
+        dxfattribs={
+            'height': 0.5,      # حجم الخط
+            'color': 1,         # اللون الأحمر في أوتوكاد
+            'style': 'Standard'
+        }
+    ).set_placement((10, 10))  # موقع الختم على المحاور
 
-    # حفظ الملف في ذاكرة مؤقتة لتحميله
-    out_stream = io.StringIO()
-    doc.write(out_stream)
-    return out_stream.getvalue()
+    # إضافة إطار بسيط حول الختم
+    msp.add_lwpolyline([(5, 5), (50, 5), (50, 15), (5, 15), (5, 5)])
 
-# واجهة Streamlit
-st.title("برنامج مهندس بلان - توليد ملفات DXF")
+    # 4. حفظ الملف في ذاكرة مؤقتة (Buffer)
+    out_buffer = io.StringIO()
+    doc.write(out_buffer)
+    return out_buffer.getvalue()
 
-user_input = st.text_input("أدخل نص الختم الإضافي:", "ختم هندسي")
+# --- واجهة المستخدم في Streamlit ---
+st.title("🏗️ برنامج مهندس بلان")
+st.subheader("توليد ملفات DXF مع الختم التلقائي")
 
-if st.button("توليد ملف الأوتوكاد"):
-    dxf_data = create_dxf_with_stamp(user_input)
-    
-    st.download_button(
-        label="تحميل ملف DXF",
-        data=dxf_data,
-        file_name="plan_with_stamp.dxf",
-        mime="application/dxf"
-    )
+st.info("سيتم إضافة الرقم 0998449697 تلقائياً في نهاية الختم.")
+
+# مدخلات المستخدم
+user_note = st.text_input("أدخل عنوان المخطط أو نص الختم:", "مخطط هندسي جديد")
+
+if st.button("توليد وتحميل الملف"):
+    try:
+        dxf_content = create_stamped_dxf(user_note)
+        
+        # زر التحميل
+        st.download_button(
+            label="💾 تحميل ملف AutoCAD (DXF)",
+            data=dxf_content,
+            file_name="Engineer_Plan_Stamp.dxf",
+            mime="application/dxf"
+        )
+        st.success("تم تجهيز الملف بنجاح مع الرقم المعتمد!")
+    except Exception as e:
+        st.error(f"حدث خطأ أثناء التوليد: {e}")
+
+# تذييل الصفحة
+st.markdown("---")
+st.caption("برنامج مهندس بلان | الإصدار التجريبي 2026")
