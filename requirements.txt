@@ -1,3 +1,2 @@
+ezdxf
 streamlit
-numpy
-matplotlib
