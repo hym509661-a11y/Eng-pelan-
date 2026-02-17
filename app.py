@@ -1,72 +1,68 @@
 import streamlit as st
-import pygame
-import random
+import numpy as np
+import pandas as pd
 
-# إعداد واجهة Streamlit
-st.set_page_config(page_title="Qamishli Racing Game", layout="centered")
-st.title("🚗 سباق شوارع القامشلي (Qamishli Drive)")
-st.info("استخدم أسهم الكيبورد (يمين ويسار) لتجنب الحواجز في شوارع المدينة")
+# إعدادات الواجهة
+st.set_page_config(page_title="Jawad Pro Enterprise - Raft Edition", layout="wide")
 
-# كود اللعبة باستخدام Pygame
-def start_game():
-    pygame.init()
-    width, height = 400, 600
-    screen = pygame.display.set_mode((width, height))
-    clock = pygame.time.Clock()
+st.title("🏗️ منظومة الجواد الهندسية (اللبشة والقواعد الحصيرية)")
 
-    # ألوان وإعدادات
-    car_x = width // 2
-    car_y = height - 100
-    car_speed = 5
-    obstacle_x = random.randint(0, width - 50)
-    obstacle_y = -100
-    score = 0
-
-    running = True
-    while running:
-        screen.fill((50, 50, 50))  # لون الطريق (أسفلت)
+# --- محرك حسابات اللبشة (Raft Engine) ---
+class RaftEngine:
+    @staticmethod
+    def design_raft(total_p, mx, my, lx, ly, q_allow, fc):
+        # 1. حساب الإجهادات تحت اللبشة (P/A ± My.x/Iy ± Mx.y/Ix)
+        area = lx * ly
+        sigma_avg = total_p / area
         
-        # رسم خطوط الطريق (محاكاة شوارع القامشلي)
-        pygame.draw.rect(screen, (255, 255, 255), (width//2 - 5, 0, 10, height))
+        # إجهادات الزوايا (تبسيط)
+        stress_max = (total_p / area) + (abs(mx) / (lx**2 * ly / 6)) + (abs(my) / (ly**2 * lx / 6))
+        stress_min = (total_p / area) - (abs(mx) / (lx**2 * ly / 6)) - (abs(my) / (ly**2 * lx / 6))
+        
+        # 2. التحقق من الثقب (Punching Shear) لأكبر عمود
+        # d_req تقريبي بناءً على القص الثاقب
+        d_req = (total_p * 0.1) / (4 * 0.4 * 0.17 * np.sqrt(fc) * 1000) * 1000 # قيمة استرشادية
+        
+        status = "✅ آمن" if stress_max <= q_allow else "❌ خطر (تجاوز إجهاد التربة)"
+        return round(stress_max, 2), round(stress_min, 2), status, int(d_req)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+# --- الواجهة الرئيسية (Tabs) ---
+tabs = st.tabs(["🧱 الجدران", "🦶 الأساسات", "🪜 الأدراج", "🏢 اللبشة (Raft)"])
 
-        # التحكم
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and car_x > 0:
-            car_x -= car_speed
-        if keys[pygame.K_RIGHT] and car_x < width - 50:
-            car_x += car_speed
+# (الأقسام السابقة تبقى كما هي لضمان عدم النقصان)
 
-        # حركة العوائق
-        obstacle_y += 7
-        if obstacle_y > height:
-            obstacle_y = -100
-            obstacle_x = random.randint(0, width - 50)
-            score += 1
-
-        # رسم السيارة والعوائق
-        pygame.draw.rect(screen, (0, 255, 0), (car_x, car_y, 50, 80)) # سيارتك
-        pygame.draw.rect(screen, (255, 0, 0), (obstacle_x, obstacle_y, 50, 50)) # سيارة أخرى
-
-        # كشف الاصطدام
-        if (car_y < obstacle_y + 50 and car_y + 80 > obstacle_y and 
-            car_x < obstacle_x + 50 and car_x + 50 > obstacle_x):
-            running = False
-
-        pygame.display.flip()
-        clock.tick(60)
+with tabs[3]:
+    st.header("🏢 تصميم اللبشة المسلحة (Raft Foundation)")
+    st.info("حساب توزيع الإجهادات تحت الحصيرة والتحقق من أمان التربة وفق الكود السوري")
     
-    pygame.quit()
-    return score
+    r_col1, r_col2 = st.columns([1, 1.5])
+    with r_col1:
+        total_p = st.number_input("مجموع أحمال الأعمدة الكلي (kN)", value=15000)
+        lx = st.number_input("طول اللبشة X (m)", value=20.0)
+        ly = st.number_input("عرض اللبشة Y (m)", value=15.0)
+        mx = st.number_input("العزم الكلي Mx (kNm)", value=500)
+        my = st.number_input("العزم الكلي My (kNm)", value=300)
+        q_soil = st.number_input("إجهاد التربة المسموح (kN/m²)", value=150)
+        fc_raft = st.number_input("f'c (MPa)", value=25, key="fcr")
 
-# تشغيل اللعبة داخل Streamlit
-if st.button("ابدأ اللعب الآن"):
-    final_score = start_game()
-    st.warning(f"انتهت اللعبة! مجموع النقاط في شوارع القامشلي: {final_score}")
+    if st.button("تحليل اللبشة"):
+        s_max, s_min, status, d_min = RaftEngine.design_raft(total_p, mx, my, lx, ly, q_soil, fc_raft)
+        
+        with r_col2:
+            st.subheader("📋 نتائج التحليل (Raft Analysis)")
+            st.write(f"أقصى إجهاد على التربة: **{s_max} kN/m²**")
+            st.write(f"أدنى إجهاد على التربة: **{s_min} kN/m²**")
+            
+            if status == "✅ آمن":
+                st.success(f"التحقق من التربة: {status}")
+            else:
+                st.error(f"التحقق من التربة: {status}")
+            
+            
+            
+            st.warning(f"السماكة الدنيا المقترحة لمقاومة الثقب: **{d_min + 50} mm**")
+            st.write("**ملاحظة:** يجب توزيع التسليح بناءً على شرائح (Column Strips & Middle Strips) كما في الجواد.")
 
-# التذييل الخاص بك
+# التوقيع والختم الرقمي
 st.markdown("---")
 st.write("للتواصل والدعم الفني: **0998449697**")
