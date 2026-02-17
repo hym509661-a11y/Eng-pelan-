@@ -1,60 +1,56 @@
 import streamlit as st
-import numpy as np
+from PyNite import Visualization
+from PyNite.FEModel3D import FEModel3D
 import pandas as pd
-import matplotlib.pyplot as plt
-import ezdxf  # مكتبة لإنشاء ملفات الأوتوكاد
 
-# إعدادات الواجهة
-st.set_page_config(page_title="Ultimate Engineering Suite", layout="wide")
-st.title("🏗️ النظام الهندسي المتكامل (Analysis, Design & CAD)")
+st.set_page_config(page_title="Pro Structural Analyzer", layout="wide")
+st.title("🏗️ نظام التحليل الإنشائي المتقدم (FEA Engine)")
 
-# --- 1. مدخلات النمذجة (ETABS Style) ---
-st.sidebar.header("1. النمذجة الإنشائية")
-nodes = st.sidebar.number_input("عدد العقد (Nodes)", min_value=2, value=2)
-loads = st.sidebar.number_input("الحمل الحي (kN/m2)", value=5.0)
-f_c = st.sidebar.slider("f'c (MPa)", 20, 60, 30)
-f_y = st.sidebar.slider("fy (MPa)", 240, 420, 400)
+# 1. إعداد النموذج (مثل ميكانيكا ETABS)
+model = FEModel3D()
 
-# --- 2. محرك التحليل الإنشائي (Structural Solver) ---
-st.header("📊 مخرجات التحليل الإنشائي (ETABS Engine)")
-# افتراض كمرة بسيطة لتحليل العزوم والقوى
-L = 6.0 # طول افتراضي
-x = np.linspace(0, L, 100)
-moment = (loads * x / 2) * (L - x) # M = wL/2 * x - wx^2/2
+# إضافة العقد (Nodes)
+model.add_node('N1', 0, 0, 0)
+model.add_node('N2', 6, 0, 0) # كمرة بطول 6 متر
 
-fig, ax = plt.subplots()
-ax.plot(x, moment, label="Bending Moment (kNm)", color='red')
-ax.fill_between(x, moment, color='red', alpha=0.2)
-ax.set_title("Bending Moment Diagram (BMD)")
-st.pyplot(fig)
+# تعريف المادة والمقطع (Material & Section)
+E = 25000000 # kN/m2
+G = 10000000
+Iz = 0.0005   # Inertia
+Iy = 0.0002
+J = 0.0001
+A = 0.12     # Area (30x40 cm)
 
+# إضافة العنصر (Member)
+model.add_member('M1', 'N1', 'N2', E, G, Iy, Iz, J, A)
 
-# --- 3. تصميم العناصر الإنشائية (SAFE Style) ---
-st.header("🏗️ تصميم المقاطع (SAFE/Concrete Design)")
-b = 300; d = 500 # أبعاد افتراضية بالـ mm
-Mu = np.max(moment) * 10**6 # تحويل لـ N.mm
-# حساب التسليح (تبسيط كود ACI)
-Rn = Mu / (0.9 * b * d**2)
-rho = (0.85 * f_c / f_y) * (1 - np.sqrt(1 - (2 * Rn / (0.85 * f_c))))
-As = rho * b * d
-st.success(f"مساحة التسليح المطلوبة: {As:.2f} mm²")
+# 2. الشروط الحدودية والتحميل (Supports & Loads)
+model.def_support('N1', True, True, True, True, True, True) # وثاقة
+model.def_support('N2', True, True, True, True, True, True) # وثاقة
 
-# --- 4. توليد المخططات الهندسية (AutoCAD Style) ---
-st.header("🖋️ تصدير المخططات (AutoCAD Export)")
-def create_dxf():
-    doc = ezdxf.new('R2010')
-    msp = doc.modelspace()
-    # رسم مستطيل يمثل الكمرة
-    msp.add_lwpolyline([(0, 0), (L*100, 0), (L*100, d/10), (0, d/10), (0, 0)], close=True)
-    # رسم خطوط التسليح
-    msp.add_line((5, 5), (L*100-5, 5), dxfattribs={'color': 1}) # تسليح سفلي
-    doc.saveas("structural_detail.dxf")
+# إضافة حمل موزع (مثل Safe)
+model.add_member_dist_load('M1', 'FY', -20, -20) # 20 kN/m
 
-if st.button("توليد ملف DXF للأوتوكاد"):
-    create_dxf()
-    with open("structural_detail.dxf", "rb") as file:
-        st.download_button("تحميل المخطط الهندسي", file, "beam_detail.dxf")
+# 3. معالجة التحليل (Solver)
+if st.button('تشغيل التحليل الإنشائي الحقيقي'):
+    model.analyze()
+    
+    st.subheader("✅ نتائج التحليل (Output Data)")
+    
+    # استخراج العزوم وردود الأفعال
+    m_max = model.get_member('M1').max_moment('Mz')
+    r_y = model.get_node('N1').RxnFY
+    
+    col1, col2 = st.columns(2)
+    col1.metric("أقصى عزم (Max Moment)", f"{round(m_max, 2)} kN.m")
+    col2.metric("رد الفعل الرأسي (Reaction)", f"{round(r_y, 2)} kN")
 
-# التذييل المطلوب
+    # عرض الجداول (Excel Style)
+    st.write("### جدول عزوم العقد")
+    results = {"Node": ["N1", "N2"], "Reaction FY (kN)": [model.get_node('N1').RxnFY, model.get_node('N2').RxnFY]}
+    st.table(pd.DataFrame(results))
+
+    st.success("التحليل تم باستخدام محرك Finite Element Method (FEM)")
+
 st.markdown("---")
 st.write("للتواصل والدعم الفني: **0998449697**")
