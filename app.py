@@ -1,82 +1,104 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
 
-st.set_page_config(page_title="Jawad Frame Pro", layout="wide")
+# إعداد الصفحة لتكون بعرض كامل وتصميم هندسي
+st.set_page_config(page_title="Jawad Structural System - Syrian Code", layout="wide")
 
-class FrameEngine:
-    @staticmethod
-    def calculate_distribution_factors(l_beam, i_beam, h_col_top, i_col_top, h_col_bot, i_col_bot):
-        # حساب الجساءة K = I/L
-        k_beam = i_beam / l_beam
-        k_col_t = i_col_top / h_col_top
-        k_col_b = i_col_bot / h_col_bot
-        
-        sum_k = k_beam + k_col_t + k_col_b
-        
-        # معاملات التوزيع (Distribution Factors) - جوهر التحليل الإطاري
-        df_beam = k_beam / sum_k
-        df_col_t = k_col_t / sum_k
-        df_col_b = k_col_b / sum_k
-        
-        return df_beam, df_col_t, df_col_b
+# تخصيص الألوان لتشبه نظام ويندوز الكلاسيكي الذي يفضله الجواد
+st.markdown("""
+    <style>
+    .main { background-color: #f0f0f0; }
+    .stButton>button { width: 100%; background-color: #004a99; color: white; border-radius: 0px; }
+    .stTextInput>div>div>input { background-color: #ffffff; }
+    .report-box { border: 1px solid #000; padding: 20px; background-color: white; font-family: 'Courier New', Courier, monospace; }
+    </style>
+    """, unsafe_allow_index=True)
 
-st.title("🏗️ وحدة تحليل الإطارات (الجوائز المترابطة مع الأعمدة)")
-st.info("التحليل يعتمد على انتقال العزوم بين الجائز والأعمدة بناءً على جساءة كل عنصر (Hardcore Engineering)")
-
+# --- القائمة الجانبية (مثل قوائم الجواد) ---
 with st.sidebar:
-    st.header("📏 أبعاد الجائز (Beam)")
-    l_b = st.number_input("طول الجائز (m)", value=6.0)
-    b_b = st.number_input("عرض الجائز (mm)", value=300)
-    h_b = st.number_input("ارتفاع الجائز (mm)", value=600)
+    st.image("https://cdn-icons-png.flaticon.com/512/1048/1048953.png", width=80)
+    st.title("نظام الجواد")
+    st.write("الإصدار الهندسي 2026")
+    st.divider()
+    menu = st.radio("اختر المهمة:", [
+        "دراسة جائز مستمر مع أعمدة",
+        "تصميم جدران استنادية",
+        "أساسات منفردة ومشتركة",
+        "تفريد حديد الأدراج"
+    ])
+    st.divider()
+    st.info("الكود المعتمد: الكود العربي السوري")
+
+# --- الواجهة الرئيسية حسب اختيار القائمة ---
+if menu == "دراسة جائز مستمر مع أعمدة":
+    st.header("📋 دراسة الجوائز المترابطة مع الأعمدة")
     
-    st.header("🏢 أبعاد الأعمدة (Columns)")
-    b_c = st.number_input("عرض العمود (mm)", value=400)
-    h_c = st.number_input("عمق العمود (mm)", value=400)
-    h_stack = st.number_input("ارتفاع الطابق (m)", value=3.0)
+    # تقسيم المدخلات لمجموعات (مثل تبويبات الجواد)
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.subheader("🏗️ أبعاد العناصر")
+        L = st.number_input("طول البحر (L) م", value=6.0)
+        b = st.number_input("عرض الجائز (b) مم", value=300)
+        h = st.number_input("ارتفاع الجائز (h) مم", value=600)
+        
+    with col2:
+        st.subheader("⚖️ الأحمال (kN/m)")
+        g = st.number_input("الحمولات الميتة (g)", value=25.0)
+        p = st.number_input("الحمولات الحية (p)", value=12.0)
+        
+    with col3:
+        st.subheader("🔩 الأعمدة والارتباط")
+        c_dim = st.number_input("بعد العمود (D) مم", value=400)
+        h_story = st.number_input("ارتفاع الطابق (H) م", value=3.0)
+        fixity = st.selectbox("نوع الاتصال", ["اتصال صلب (Frame)", "استناد بسيط"])
 
-# حساب عزوم العطالة (Moment of Inertia)
-i_beam = (b_b * h_b**3) / 12
-i_col = (b_c * h_c**3) / 12
+    st.divider()
+    
+    if st.button("إجراء التحليل الإنشائي والتصميم"):
+        # محرك الحساب (بناءً على الجساءة)
+        wu = 1.2 * g + 1.6 * p
+        # حساب العزوم مع أخذ جساءة العمود بعين الاعتبار (تبسيط لمنطق الجواد)
+        k_beam = (b * h**3 / 12) / L
+        k_col = (c_dim**4 / 12) / h_story
+        df = k_beam / (k_beam + 2 * k_col) # معامل التوزيع
+        
+        mu_neg = (wu * L**2 / 12) * df # العزم السالب عند المسند
+        mu_pos = (wu * L**2 / 8) - (mu_neg) # العزم الموجب
+        
+        # عرض النتائج بطريقة المذكرة الحسابية
+        st.subheader("📄 المذكرة الحسابية الناتجة")
+        
+        with st.container():
+            st.markdown('<div class="report-box">', unsafe_allow_index=True)
+            res1, res2 = st.columns(2)
+            with res1:
+                st.write(f"**الحمل التصميمي:** {wu} kN/m")
+                st.write(f"**العزم السالب (المسند):** {round(mu_neg, 2)} kNm")
+                st.write(f"**العزم الموجب (الفتحة):** {round(mu_pos, 2)} kNm")
+            with res2:
+                # تفريد الحديد (الناتج الذي يشتهر به الجواد)
+                as_neg = int((mu_neg * 10**6) / (0.9 * 400 * 0.9 * (h-50)))
+                as_pos = int((mu_pos * 10**6) / (0.9 * 400 * 0.9 * (h-50)))
+                st.write(f"**تسليح المساند:** {as_neg} mm²")
+                st.write(f"**تسليح الفتحة:** {as_pos} mm²")
+            
+            st.markdown('</div>', unsafe_allow_index=True)
 
-# حساب معاملات التوزيع عند العقدة
-df_b, df_ct, df_cb = FrameEngine.calculate_distribution_factors(l_b, i_beam, h_stack, i_col, h_stack, i_col)
+        st.divider()
+        st.subheader("🎨 تفريد الحديد (Reinforcement Detailing)")
+        
+        # هنا تظهر الرسومات التي تطلبها
+        
+        
+        st.write("**الجدول المقترح لتفريد الأسياخ:**")
+        df_bars = pd.DataFrame({
+            "المكان": ["علوي (مساند)", "سفلي (فتحة)", "أساور (عقدة)", "أساور (فتحة)"],
+            "التسليح": [f"{int(as_neg/154)+1} T14", f"{int(as_pos/154)+1} T14", "Φ8 @ 100mm", "Φ8 @ 200mm"],
+            "الطول (m)": [round(L/3, 2), round(L+0.4, 2), "-", "-"]
+        })
+        st.table(df_bars)
 
-st.subheader("📊 معاملات توزيع العزوم عند العقدة (Joint D.F)")
-c1, c2, c3 = st.columns(3)
-c1.metric("للحمال (Beam)", f"{round(df_b, 3)}")
-c2.metric("للعمود العلوي", f"{round(df_ct, 3)}")
-c3.metric("للعمود السفلي", f"{round(df_cb, 3)}")
-
-# التحليل الإنشائي (Moment Distribution)
-w_total = st.number_input("الحمل الموزع على الجائز (kN/m)", value=40.0)
-fem = (w_total * l_b**2) / 12 # عزم الوثاقة الابتدائي
-
-m_beam = fem * (1 - df_b) # العزم الذي سيبقى في الجائز بعد التوزيع
-m_col_total = fem * df_b  # العزم الذي سينتقل للأعمدة
-
-st.divider()
-st.subheader("📉 نتائج العزوم المترابطة (Frame Moments)")
-
-
-
-res_col1, res_col2 = st.columns(2)
-with res_col1:
-    st.write(f"**عزم الوثاقة الابتدائي (FEM):** {round(fem, 2)} kNm")
-    st.write(f"**العزم النهائي في الجائز عند المسند:** {round(m_beam, 2)} kNm")
-    st.success(f"**العزم المنقول للأعمدة:** {round(m_col_total, 2)} kNm")
-
-with res_col2:
-    st.info("توزيع العزم على الأعمدة:")
-    st.write(f"- العمود العلوي: {round(m_col_total * (df_ct/(df_ct+df_cb)), 2)} kNm")
-    st.write(f"- العمود السفلي: {round(m_col_total * (df_cb/(df_ct+df_cb)), 2)} kNm")
-
-st.divider()
-st.subheader("🏗️ تصميم تسليح العقدة (Joint Detailing)")
-st.write("بناءً على العزوم أعلاه، يجب تأمين طول تشريك كافٍ لحديد الجائز داخل العمود.")
-
-
-
-# التذييل المطلوب
+# التوقيع الثابت (الختم)
 st.markdown("---")
 st.write("للتواصل والدعم الفني: **0998449697**")
