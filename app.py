@@ -1,63 +1,74 @@
 import streamlit as st
 import ezdxf
-from ezdxf.units import PaperUnits
 import io
 
-# --- الإعدادات الإنشائية ---
-st.title("🏗️ نظام تصميم المنشآت - مهندس بلان")
-st.sidebar.header("إعدادات المشروع")
+# إعدادات الصفحة
+st.set_page_config(page_title="مهندس بلان - التصميم الإنشائي", layout="wide")
 
-# مدخلات الواجهة التي طلبتها
-num_floors = st.sidebar.number_input("عدد الطوابق", min_value=1, value=3)
-num_columns = st.sidebar.number_input("عدد الأعمدة في الطابق الواحد", min_value=2, value=6)
-rebar_type = st.sidebar.selectbox("نوع التسليح الرئيسي", ["T12", "T14", "T16"])
-stamp_number = "0998449697" # الرقم المطلوب في الختم
+st.title("🏗️ برنامج مهندس بلان (المطور)")
+st.write("نظام توليد المخططات الإنشائية مع الفرش والتسليح")
 
-def generate_structure():
+# --- الواجهة الجانبية للمدخلات ---
+with st.sidebar:
+    st.header("⚙️ معايير التصميم")
+    num_floors = st.number_input("عدد الطوابق", min_value=1, value=3)
+    num_columns = st.number_input("عدد الأعمدة في كل طابق", min_value=2, step=2, value=4)
+    rebar_main = st.selectbox("تسليح الجوائز الرئيسي", ["3T12", "3T14", "4T16"])
+    rebar_cols = st.selectbox("تسليح الأعمدة", ["4T14", "6T16", "8T16"])
+    stirrups = st.text_input("الأساور (الكانات)", "T8 @ 15cm")
+
+# --- وظيفة الرسم الهندسي ---
+def generate_advanced_dxf():
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
     
-    # 1. رسم الأعمدة والجوائز (Beams) التي تربطها
-    # سنفترض توزيع الأعمدة على صفين لتوضيح الربط
-    col_spacing = 5.0
+    # 1. رسم الأعمدة والجوائز وتوضيح الربط
+    col_width = 0.4
+    spacing = 5.0
     for i in range(num_columns // 2):
-        x = i * col_spacing
-        # رسم عمودين (مربعين)
-        msp.add_lwpolyline([(x, 0), (x+0.4, 0), (x+0.4, 0.4), (x, 0.4), (x, 0)], close=True)
-        msp.add_lwpolyline([(x, 5), (x+0.4, 5), (x+0.4, 5.4), (x, 5.4), (x, 5)], close=True)
+        x_pos = i * spacing
         
-        # رسم الجائز (Beam) الذي يربط العمودين ببعضهما
-        msp.add_line((x+0.2, 0.4), (x+0.2, 5))
-        
-        # توضيح التسليح (كتابة نوع التسليح فوق كل عنصر)
-        msp.add_text(f"Reinforcement: {rebar_type}", 
-                     dxfattribs={'height': 0.2}).set_placement((x, -0.5))
+        # رسم العمود الأول والثاني في الصف
+        for y_pos in [0, 5]:
+            # جسم العمود
+            msp.add_lwpolyline([(x_pos, y_pos), (x_pos+col_width, y_pos), 
+                                (x_pos+col_width, y_pos+col_width), (x_pos, y_pos+col_width)], close=True)
+            # رسم حديد التسليح داخل العمود (نقاط)
+            msp.add_circle((x_pos+0.1, y_pos+0.1), radius=0.03)
+            msp.add_circle((x_pos+0.3, y_pos+0.1), radius=0.03)
+            msp.add_text(rebar_cols, dxfattribs={'height': 0.15}).set_placement((x_pos, y_pos-0.3))
 
-    # 2. إضافة واجهة البيانات (الجدول الإنشائي)
-    msp.add_text(f"Floor Count: {num_floors}", dxfattribs={'height': 0.5}).set_placement((0, 10))
-    msp.add_text(f"Columns per Floor: {num_columns}", dxfattribs={'height': 0.5}).set_placement((0, 9))
+        # رسم الجائز (Beam) الواصل بين العمودين
+        msp.add_line((x_pos+0.2, col_width), (x_pos+0.2, 5)) 
+        msp.add_text(f"Beam: {rebar_main} + {stirrups}", 
+                     dxfattribs={'height': 0.2}).set_placement((x_pos+0.3, 2.5), align=5)
 
-    # 3. إضافة الختم النهائي مع الرقم
-    stamp_text = f"Designed by: Engineer Plan | Mob: {stamp_number}"
-    msp.add_text(stamp_text, 
-                 dxfattribs={'height': 0.6, 'color': 1}).set_placement((0, -2))
+    # 2. واجهة بيانات الطوابق (في زاوية اللوحة)
+    info_x, info_y = -5, 10
+    msp.add_text(f"عدد الطوابق الإجمالي: {num_floors}", dxfattribs={'height': 0.5}).set_placement((info_x, info_y))
+    msp.add_text(f"عدد أعمدة الطابق: {num_columns}", dxfattribs={'height': 0.5}).set_placement((info_x, info_y-1))
 
-    # حفظ الملف
+    # 3. الختم الدائم مع الرقم المطلوب
+    stamp_text = f"تصميم: مهندس بلان | موبايل: 0998449697"
+    msp.add_text(stamp_text, dxfattribs={'height': 0.7, 'color': 1}).set_placement((0, -2))
+
     out_buffer = io.StringIO()
     doc.write(out_buffer)
     return out_buffer.getvalue()
 
-# --- واجهة Streamlit للعرض ---
-if st.button("توليد المخطط الإنشائي والتسليح"):
-    dxf_data = generate_structure()
-    st.success(f"تم إنشاء المخطط لعدد {num_floors} طوابق بنجاح!")
-    
-    st.download_button(
-        label="💾 تحميل ملف AutoCAD (DXF)",
-        data=dxf_data,
-        file_name="Structural_Plan_Stamp.dxf",
-        mime="application/dxf"
-    )
+# --- زر التشغيل والتحميل ---
+if st.button("توليد المخطط الشامل وتحميل الملف"):
+    try:
+        dxf_file = generate_advanced_dxf()
+        st.success(f"تم توليد مخطط لـ {num_floors} طوابق مع {num_columns} أعمدة وجوائز الربط.")
+        st.download_button(
+            label="💾 تحميل ملف DXF للأوتوكاد",
+            data=dxf_file,
+            file_name="Engineer_Plan_Full_Design.dxf",
+            mime="application/dxf"
+        )
+    except Exception as e:
+        st.error(f"خطأ في النظام: {e}")
 
 st.markdown("---")
-st.info(f"ملاحظة: الختم يحتوي تلقائياً على الرقم: {stamp_number}")
+st.caption("الرقم المعتمد في الختم: 0998449697")
