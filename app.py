@@ -1,61 +1,63 @@
 import streamlit as st
 import ezdxf
+from ezdxf.units import PaperUnits
 import io
 
-# إعدادات الصفحة
-st.set_page_config(page_title="مهندس بلان - محرر الأوتوكاد", layout="centered")
+# --- الإعدادات الإنشائية ---
+st.title("🏗️ نظام تصميم المنشآت - مهندس بلان")
+st.sidebar.header("إعدادات المشروع")
 
-def create_stamped_dxf(base_text):
-    # 1. إنشاء ملف DXF جديد (إصدار متوافق R2010)
+# مدخلات الواجهة التي طلبتها
+num_floors = st.sidebar.number_input("عدد الطوابق", min_value=1, value=3)
+num_columns = st.sidebar.number_input("عدد الأعمدة في الطابق الواحد", min_value=2, value=6)
+rebar_type = st.sidebar.selectbox("نوع التسليح الرئيسي", ["T12", "T14", "T16"])
+stamp_number = "0998449697" # الرقم المطلوب في الختم
+
+def generate_structure():
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
+    
+    # 1. رسم الأعمدة والجوائز (Beams) التي تربطها
+    # سنفترض توزيع الأعمدة على صفين لتوضيح الربط
+    col_spacing = 5.0
+    for i in range(num_columns // 2):
+        x = i * col_spacing
+        # رسم عمودين (مربعين)
+        msp.add_lwpolyline([(x, 0), (x+0.4, 0), (x+0.4, 0.4), (x, 0.4), (x, 0)], close=True)
+        msp.add_lwpolyline([(x, 5), (x+0.4, 5), (x+0.4, 5.4), (x, 5.4), (x, 5)], close=True)
+        
+        # رسم الجائز (Beam) الذي يربط العمودين ببعضهما
+        msp.add_line((x+0.2, 0.4), (x+0.2, 5))
+        
+        # توضيح التسليح (كتابة نوع التسليح فوق كل عنصر)
+        msp.add_text(f"Reinforcement: {rebar_type}", 
+                     dxfattribs={'height': 0.2}).set_placement((x, -0.5))
 
-    # 2. إعداد نص الختم مع الرقم المطلوب في الذاكرة المحفوظة
-    # النص سيظهر كالتالي: [نص المستخدم] | 0998449697
-    final_stamp = f"{base_text} - 0998449697"
+    # 2. إضافة واجهة البيانات (الجدول الإنشائي)
+    msp.add_text(f"Floor Count: {num_floors}", dxfattribs={'height': 0.5}).set_placement((0, 10))
+    msp.add_text(f"Columns per Floor: {num_columns}", dxfattribs={'height': 0.5}).set_placement((0, 9))
 
-    # 3. إضافة الختم إلى الرسم (الإحداثيات 0,0)
-    msp.add_text(
-        final_stamp,
-        dxfattribs={
-            'height': 0.5,      # حجم الخط
-            'color': 1,         # اللون الأحمر في أوتوكاد
-            'style': 'Standard'
-        }
-    ).set_placement((10, 10))  # موقع الختم على المحاور
+    # 3. إضافة الختم النهائي مع الرقم
+    stamp_text = f"Designed by: Engineer Plan | Mob: {stamp_number}"
+    msp.add_text(stamp_text, 
+                 dxfattribs={'height': 0.6, 'color': 1}).set_placement((0, -2))
 
-    # إضافة إطار بسيط حول الختم
-    msp.add_lwpolyline([(5, 5), (50, 5), (50, 15), (5, 15), (5, 5)])
-
-    # 4. حفظ الملف في ذاكرة مؤقتة (Buffer)
+    # حفظ الملف
     out_buffer = io.StringIO()
     doc.write(out_buffer)
     return out_buffer.getvalue()
 
-# --- واجهة المستخدم في Streamlit ---
-st.title("🏗️ برنامج مهندس بلان")
-st.subheader("توليد ملفات DXF مع الختم التلقائي")
+# --- واجهة Streamlit للعرض ---
+if st.button("توليد المخطط الإنشائي والتسليح"):
+    dxf_data = generate_structure()
+    st.success(f"تم إنشاء المخطط لعدد {num_floors} طوابق بنجاح!")
+    
+    st.download_button(
+        label="💾 تحميل ملف AutoCAD (DXF)",
+        data=dxf_data,
+        file_name="Structural_Plan_Stamp.dxf",
+        mime="application/dxf"
+    )
 
-st.info("سيتم إضافة الرقم 0998449697 تلقائياً في نهاية الختم.")
-
-# مدخلات المستخدم
-user_note = st.text_input("أدخل عنوان المخطط أو نص الختم:", "مخطط هندسي جديد")
-
-if st.button("توليد وتحميل الملف"):
-    try:
-        dxf_content = create_stamped_dxf(user_note)
-        
-        # زر التحميل
-        st.download_button(
-            label="💾 تحميل ملف AutoCAD (DXF)",
-            data=dxf_content,
-            file_name="Engineer_Plan_Stamp.dxf",
-            mime="application/dxf"
-        )
-        st.success("تم تجهيز الملف بنجاح مع الرقم المعتمد!")
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء التوليد: {e}")
-
-# تذييل الصفحة
 st.markdown("---")
-st.caption("برنامج مهندس بلان | الإصدار التجريبي 2026")
+st.info(f"ملاحظة: الختم يحتوي تلقائياً على الرقم: {stamp_number}")
