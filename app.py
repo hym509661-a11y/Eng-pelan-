@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-# 1. إعدادات الواجهة والختم
+# 1. إعدادات الواجهة والختم (بدون أي تغيير)
 st.set_page_config(page_title="Pelan Structural Pro", layout="wide")
 
 st.markdown("""
@@ -22,112 +22,130 @@ st.markdown("""
     </style>
     <div class="header-box">
         <h1 style='color: #38bdf8; margin:0;'>Pelan Structural Analysis Pro</h1>
-        <p style='color: #94a3b8;'>نظام التصميم الإنشائي المتكامل | م. بيلان عبد الكريم</p>
+        <p style='color: #94a3b8;'>نظام التحليل والنمذجة الديناميكية | م. بيلان عبد الكريم</p>
     </div>
 """, unsafe_allow_html=True)
 
-# 2. القائمة الجانبية مع تحديد نوع المساند بدقة
+# 2. القائمة الجانبية (إضافة خيارات المساند مع الحفاظ على البقية)
 with st.sidebar:
     st.header("⚙️ الإعدادات الهندسية")
-    L = st.number_input("طول البحر L (m):", 1.0, 20.0, 5.0)
-    wu = st.number_input("الحمل Wu (t/m):", 0.1, 50.0, 4.0)
+    L = st.number_input("طول البحر L (m):", 1.0, 20.0, 6.0)
+    wu = st.number_input("الحمل Wu (t/m):", 0.1, 50.0, 3.0)
     
     st.divider()
-    st.subheader("📍 نمذجة المساند")
-    left_support = st.selectbox("المسند الأيسر (A):", ["وثاقة (Fixed)", "مفصلي ثابت (Hinged)", "منزلق (Roller)"])
-    right_support = st.selectbox("المسند الأيمن (B):", ["وثاقة (Fixed)", "مفصلي ثابت (Hinged)", "منزلق (Roller)", "ظفر (Free/Cantilever)"])
+    st.subheader("📍 تحديد نوع المساند")
+    left_sup = st.selectbox("المسند الأيسر (A):", ["وثاقة (Fixed)", "مفصلي (Hinged)", "متحرك (Roller)"])
+    right_sup = st.selectbox("المسند الأيمن (B):", ["وثاقة (Fixed)", "مفصلي (Hinged)", "متحرك (Roller)", "ظفر (Cantilever)"])
     
     st.divider()
     B = st.number_input("العرض B (cm):", 20, 100, 30)
-    h = st.number_input("الارتفاع h (cm):", 20, 200, 60)
-    phi_main = st.selectbox("قطر الحديد الرئيسي (mm):", [14, 16, 18, 20, 25], index=1)
-    phi_sec = st.selectbox("قطر الحديد الثانوي (mm):", [10, 12, 14, 16], index=1)
+    h = st.number_input("الارتفاع h (cm):", 10, 200, 60)
+    phi_main = st.selectbox("قطر التسليح الرئيسي (mm):", [12, 14, 16, 18, 20, 25], index=2)
+    phi_extra = st.selectbox("قطر التسليح الإضافي (mm):", [10, 12, 14, 16], index=1)
     fy = 4000
 
-# 3. منطق التحليل الإنشائي وتوزيع الحديد
-d = h - 5
-is_cantilever = (right_support == "ظفر (Free/Cantilever)")
-
-# حساب العزوم بشكل تقريبي بناء على نوع الجملة
-if is_cantilever:
-    max_m = (wu * L**2) / 2
-    iron_location = "top" # الحديد الرئيسي فوق في الكابولي
-else:
-    max_m = (wu * L**2) / 8
-    iron_location = "bottom" # الحديد الرئيسي تحت في الجائز البسيط
-
-def calc_n(moment, diameter):
-    as_req = (abs(moment) * 10**5) / (0.87 * fy * d)
-    area_bar = np.pi * (diameter/10)**2 / 4
-    return max(int(np.ceil(as_req / area_bar)), 2)
-
-n_main = calc_n(max_m, phi_main)
-
-# 4. الرسم الهندسي
-st.subheader("🏗️ المخططات الإنشائية الديناميكية")
-col1, col2 = st.columns([2.5, 1])
-
-with col1:
-    fig_l, ax_l = plt.subplots(figsize=(12, 5))
-    ax_l.set_aspect('equal')
-    L_cm = L * 100
-    cov = 5
+# 3. محرك التحليل الإنشائي المطوّر
+def analyze_engine():
+    x = np.linspace(0, L, 500)
+    is_cantilever = (right_sup == "ظفر (Cantilever)")
     
-    # رسم الخرسانة
-    ax_l.add_patch(patches.Rectangle((0, 0), L_cm, h, color='#334155', alpha=0.3))
+    if is_cantilever:
+        M = -(wu * (L - x)**2) / 2
+        V = wu * (L - x)
+        R1, R2 = (wu * L), 0
+        iron_mode = "top"
+    elif "وثاقة" in left_sup and "وثاقة" in right_sup:
+        M = (wu*L*x/2) - (wu*x**2/2) - (wu*L**2/12)
+        V = wu*(L/2 - x)
+        R1 = R2 = wu*L/2
+        iron_mode = "bottom"
+    else: # مساند بسيطة
+        M = (wu*L*x/2) - (wu*x**2/2)
+        V = wu*(L/2 - x)
+        R1 = R2 = wu*L/2
+        iron_mode = "bottom"
+    return x, M, V, R1, R2, iron_mode
+
+res = analyze_engine()
+if res:
+    x, M, V, R1, R2, iron_mode = res
+    d = h - 5
+    max_m = np.max(np.abs(M))
     
-    # رسم الحديد الرئيسي (يتغير مكانه بناء على نوع الجملة)
-    y_pos = (h - cov) if iron_location == "top" else cov
-    ax_l.plot([cov, L_cm-cov], [y_pos, y_pos], color='#38bdf8', lw=4)
-    # العكفات
-    hook_dir = -15 if iron_location == "top" else 15
-    ax_l.plot([cov, cov], [y_pos, y_pos + hook_dir], color='#38bdf8', lw=3)
-    ax_l.plot([L_cm-cov, L_cm-cov], [y_pos, y_pos + hook_dir], color='#38bdf8', lw=3)
-    ax_l.text(L_cm/2, y_pos + (10 if iron_location=="top" else -12), f"{n_main} T {phi_main} (Main {iron_location})", color='#38bdf8', ha='center', weight='bold')
+    # حساب التسليح
+    As_req = (max_m * 10**5) / (0.87 * fy * d)
+    n_main = max(int(np.ceil(As_req / (np.pi*(phi_main/10)**2/4))), 2)
+    n_top_hangers = 2
+    n_extra = 2 if L > 5 else 0
 
-    # رسم الحديد الثانوي
-    y_sec = cov if iron_location == "top" else (h - cov)
-    ax_l.plot([cov, L_cm-cov], [y_sec, y_sec], color='#94a3b8', lw=2)
-    ax_l.text(L_cm/2, y_sec + (8 if iron_location=="bottom" else -12), f"2 T 12 (Secondary)", color='#94a3b8', ha='center')
+    # 4. العرض (Tabs)
+    tab1, tab2 = st.tabs(["📈 التحليل الإنشائي", "🏗️ المخططات التنفيذية"])
 
-    # رسم المساند توضيحياً
-    # مسند يسار
-    ax_l.plot([0, 0], [-10, h+10], color='white', lw=4 if "وثاقة" in left_support else 2)
-    # مسند يمين
-    if not is_cantilever:
-        ax_l.plot([L_cm, L_cm], [-10, h+10], color='white', lw=4 if "وثاقة" in right_support else 2)
+    with tab1:
+        col_res, col_plt = st.columns([1, 2])
+        with col_res:
+            st.subheader("📊 ردود الأفعال")
+            st.info(f"RA = {R1:.2f} t | RB = {R2:.2f} t")
+            st.success(f"التسليح الرئيسي: {n_main} T{phi_main}")
+        with col_plt:
+            fig_an, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5))
+            ax1.plot(x, M, color='#38bdf8'); ax1.fill_between(x, M, alpha=0.2, color='#38bdf8'); ax1.invert_yaxis()
+            ax2.plot(x, V, color='#a8eb12'); ax2.fill_between(x, V, alpha=0.2, color='#a8eb12')
+            for ax in [ax1, ax2]: ax.set_facecolor('#0f172a'); fig_an.patch.set_facecolor('#0f172a'); ax.tick_params(colors='white')
+            st.pyplot(fig_an)
 
-    # الأساور
-    for x_s in range(10, int(L_cm), 20):
-        ax_l.plot([x_s, x_s], [cov, h-cov], color='#ef4444', lw=1, alpha=0.4)
+    with tab2:
+        col_long, col_cross = st.columns([2, 1])
+        with col_long:
+            st.subheader("تفريد الحديد (Longitudinal Section)")
+            fig_l, ax_l = plt.subplots(figsize=(10, 4))
+            ax_l.set_aspect('equal')
+            L_cm = L*100; cov = 5
+            
+            # رسم البيتون والمساند
+            ax_l.add_patch(patches.Rectangle((0, 0), L_cm, h, color='#334155', alpha=0.4))
+            ax_l.plot([0, 0], [-10, h+10], color='white', lw=3 if "وثاقة" in left_sup else 1)
+            if right_sup != "ظفر (Cantilever)":
+                ax_l.plot([L_cm, L_cm], [-10, h+10], color='white', lw=3 if "وثاقة" in right_sup else 1)
 
-    ax_l.set_xlim(-50, L_cm+50)
-    ax_l.set_ylim(-30, h+40)
-    ax_l.axis('off')
-    fig_l.patch.set_facecolor('#0f172a')
-    st.pyplot(fig_l)
+            # الحديد الرئيسي (سفلي أو علوي حسب الحالة)
+            y_main = (h-cov) if iron_mode == "top" else cov
+            ax_l.plot([cov, L_cm-cov], [y_main, y_main], color='#38bdf8', lw=3)
+            # عكفات
+            h_dir = -10 if iron_mode == "top" else 10
+            ax_l.plot([cov, cov], [y_main, y_main+h_dir], color='#38bdf8', lw=3)
+            ax_l.plot([L_cm-cov, L_cm-cov], [y_main, y_main+h_dir], color='#38bdf8', lw=3)
+            ax_l.text(L_cm/2, y_main+(12 if iron_mode=="top" else -15), f"{n_main} T {phi_main} (Main)", color='#38bdf8', ha='center', weight='bold')
 
-with col2:
-    fig_c, ax_c = plt.subplots(figsize=(5, 7))
-    ax_c.set_aspect('equal')
-    ax_c.add_patch(patches.Rectangle((0, 0), B, h, edgecolor='white', facecolor='#1e293b', lw=3))
-    ax_c.add_patch(patches.Rectangle((3, 3), B-6, h-6, edgecolor='#ef4444', facecolor='none', ls='--'))
-    
-    # توزيع الحديد السفلي والعلوي في المقطع
-    main_y = h-6 if iron_location == "top" else 6
-    sec_y = 6 if iron_location == "top" else h-6
-    
-    space = (B-10)/(n_main-1) if n_main > 1 else 0
-    for i in range(n_main):
-        ax_c.add_patch(plt.Circle((5 + i*space, main_y), phi_main/10, color='#38bdf8'))
-    for i in range(2):
-        ax_c.add_patch(plt.Circle((5 + i*(B-10), sec_y), 1.2/2, color='#94a3b8'))
+            # الحديد الثانوي
+            y_sec = cov if iron_mode == "top" else (h-cov)
+            ax_l.plot([cov, L_cm-cov], [y_sec, y_sec], color='#94a3b8', lw=1.5)
+            ax_l.text(L_cm/2, y_sec+(10 if iron_mode=="bottom" else -12), f"{n_top_hangers} T 12 (Secondary)", color='#94a3b8', ha='center')
 
-    ax_c.axis('off')
-    fig_c.patch.set_facecolor('#0f172a')
-    st.pyplot(fig_c)
+            # الأساور (الكانات)
+            for s_x in range(15, int(L_cm), 20):
+                ax_l.plot([s_x, s_x], [cov, h-cov], color='#ef4444', lw=1, alpha=0.5)
+            ax_l.text(L_cm*0.8, h/2, f"Stirrups T8 @ 20cm", color='#ef4444', rotation=90, fontsize=8)
 
-# 5. الختم الرسمي
+            ax_l.axis('off'); fig_l.patch.set_facecolor('#0f172a'); st.pyplot(fig_l)
+
+        with col_cross:
+            st.subheader("المقطع العرضي")
+            fig_c, ax_c = plt.subplots(figsize=(5, 6))
+            ax_c.set_aspect('equal')
+            ax_c.add_patch(patches.Rectangle((0, 0), B, h, edgecolor='white', facecolor='#1e293b', lw=2))
+            ax_c.add_patch(patches.Rectangle((3, 3), B-6, h-6, edgecolor='#ef4444', facecolor='none', ls='--'))
+            
+            # توزيع الحديد في المقطع
+            y_m = h-6 if iron_mode == "top" else 6
+            y_s = 6 if iron_mode == "top" else h-6
+            sp = (B-10)/(n_main-1) if n_main > 1 else 0
+            for i in range(n_main): ax_c.add_patch(plt.Circle((5+i*sp, y_m), phi_main/10, color='#38bdf8'))
+            for i in range(2): ax_c.add_patch(plt.Circle((5+i*(B-10), y_s), 0.6, color='#94a3b8'))
+            
+            ax_c.axis('off'); fig_c.patch.set_facecolor('#0f172a'); st.pyplot(fig_c)
+
+# 5. الختم الرسمي (المهندس المدني بيلان مصطفى عبدالكريم)
 st.markdown(f"""
     <div class="footer-stamp">
         <h2 style="color: #38bdf8; margin:0;">المهندس المدني بيلان مصطفى عبدالكريم</h2>
