@@ -2,77 +2,87 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 
-# بيانات الختم المحفوظة
-STAMP_TEXT = "المهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات | 0998449697"
+# بيانات الختم
+STAMP_TEXT = "الالمهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات | 0998449697"
 
-def draw_detailed_section(b, h, bot_bars, top_bars, add_bars):
-    fig, ax = plt.subplots(figsize=(5, 6))
-    # رسم بيتون الجائز
-    rect = plt.Rectangle((0, 0), b, h, color='#E0E0E0', label='Concrete')
-    ax.add_patch(rect)
-    
-    cover = 3.0
-    # رسم الأساور (Stirrups)
-    stirrup = plt.Rectangle((cover/2, cover/2), b-cover, h-cover, fill=False, edgecolor='black', linewidth=2)
-    ax.add_patch(stirrup)
+def calculate_as(M_un, d, b, fcu, fy):
+    """حساب مساحة التسليح المطلوبة وفق الكود (Simplified Method)"""
+    if M_un <= 0: return 0
+    # حساب قيمة Rn (k في بعض المراجع)
+    Rn = (M_un * 10**6) / (b * 10 * (d * 10)**2)
+    # حساب نسبة التسليح rho تقريبياً
+    m = fy / (0.85 * fcu)
+    rho = (1/m) * (1 - np.sqrt(1 - (2 * m * Rn) / fy))
+    as_req = rho * b * 10 * d * 10 / 100 # cm2
+    return max(as_req, 0.0015 * b * d) # الحد الأدنى للكود
 
-    # دالة لرسم الأسياخ
-    def plot_bars(count, y_pos, color, label):
-        if count > 0:
-            x_space = np.linspace(cover + 1, b - cover - 1, count)
-            for x in x_space:
-                circle = plt.Circle((x, y_pos), 0.8, color=color)
-                ax.add_patch(circle)
+def get_bars_count(as_required, phi):
+    """تحويل المساحة المطلوبة إلى عدد أسياخ حقيقي"""
+    if as_required <= 0: return 2
+    as_single_bar = (np.pi * phi**2) / 400 # مساحة السيخ الواحد بـ cm2
+    count = np.ceil(as_required / as_single_bar)
+    return int(max(count, 2)) # لا يقل عن سيخين
 
-    # 1. الحديد السفلي (الرئيسي) - باللون الأحمر
-    plot_bars(bot_bars, cover + 1, 'red', 'سفلي')
-    
-    # 2. الحديد العلوي (التعليق) - باللون الأزرق
-    plot_bars(top_bars, h - cover - 1, 'blue', 'تعليق')
-    
-    # 3. الحديد الإضافي (إن وجد) - باللون الأخضر
-    if add_bars > 0:
-        plot_bars(add_bars, cover + 3.5, 'green', 'إضافي')
-
-    ax.set_xlim(-5, b + 5)
-    ax.set_ylim(-5, h + 5)
-    ax.set_aspect('equal')
-    plt.title(f"تفصيل تسليح المقطع ({b}x{h})")
-    return fig
-
-st.set_page_config(page_title="برنامج المهندس بيلان - التفريد الدقيق")
-st.title("🏗️ نظام تفريد الحديد الاحترافي")
+# إعدادات الواجهة
+st.set_page_config(page_title="برنامج الجواد - نسخة المهندس بيلان", layout="wide")
+st.title("🏗️ المصمم الإنشائي الآلي (حساب التفريد)")
 
 with st.sidebar:
-    st.header("بيانات المقطع")
-    b = st.number_input("عرض الجائز (cm)", value=30)
-    h = st.number_input("ارتفاع الجائز (cm)", value=60)
+    st.header("⚙️ معطيات الكود")
+    fcu = st.number_input("إجهاد البيتون fcu (MPa)", value=25)
+    fy = st.number_input("إجهاد الفولاذ fy (MPa)", value=400)
+    phi = st.selectbox("قطر السيخ المستخدم (mm)", [12, 14, 16, 18, 20, 25])
     st.markdown("---")
-    st.header("حسابات التسليح")
-    fcu = st.number_input("fcu (MPa)", value=25)
-    fy = st.number_input("fy (MPa)", value=400)
+    st.header("📏 أبعاد المقطع (cm)")
+    b = st.number_input("العرض b", value=30)
+    h = st.number_input("الارتفاع h", value=60)
+    d = h - 5 # العمق الفعال
 
-col1, col2 = st.columns(2)
+st.subheader("📊 حسابات الجوائز (العزوم والقص)")
+col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.subheader("إدخال عدد الأسياخ")
-    n_bot = st.number_input("عدد الأسياخ السفلية (الرئيسية)", min_value=2, value=4)
-    n_top = st.number_input("عدد أسياخ التعليق (علوية)", min_value=2, value=2)
-    n_add = st.number_input("عدد الأسياخ الإضافية", min_value=0, value=0)
-    phi = st.selectbox("قطر السيخ المستخدم (mm)", [12, 14, 16, 18, 20, 25])
+    L = st.number_input("طول المجاز (m)", value=5.0)
+    w = st.number_input("الحمولة التصميمية الموزعة (kN/m)", value=40.0)
+    
+    # حساب العزوم (حسابي آلي)
+    M_max = (w * L**2) / 8 # عزم موجب (سفلي)
+    M_top = M_max * 0.15   # عزم تعليق علوي (افتراضي لربط الأساور)
+    
+    # حساب مساحة الحديد المطلوبة (حسابي)
+    as_bot_req = calculate_as(M_max, d, b, fcu, fy)
+    as_top_req = as_bot_req * 0.2 # حديد التعليق 20% من الرئيسي أو حسب الكود
+    
+    # تحويل المساحة إلى عدد أسياخ (آلي)
+    n_bot = get_bars_count(as_bot_req, phi)
+    n_top = get_bars_count(as_top_req, phi)
+    
+    st.write(f"**العزم المحسوب:** {M_max:.2f} kN.m")
+    st.write(f"**مساحة الحديد السفلي:** {as_bot_req:.2f} cm²")
+    st.success(f"**النتيجة:** استخدم {n_bot} T {phi} (سفلي)")
+    st.info(f"**التعليق:** استخدم {n_top} T {phi} (علوي)")
 
 with col2:
-    st.subheader("الرسم الهندسي")
-    fig = draw_detailed_section(b, h, n_bot, n_top, n_add)
+    # رسم المقطع آلياً بناءً على الحسابات
+    from matplotlib.patches import Rectangle, Circle
+    fig, ax = plt.subplots(figsize=(4, 5))
+    ax.add_patch(Rectangle((0, 0), b, h, color='#f0f0f0')) # الخرسانة
+    cover = 3.5
+    
+    # رسم الحديد السفلي المحسوب
+    x_bot = np.linspace(cover, b-cover, n_bot)
+    for x in x_bot:
+        ax.add_patch(Circle((x, cover), 0.8, color='red'))
+        
+    # رسم الحديد العلوي المحسوب
+    x_top = np.linspace(cover, b-cover, n_top)
+    for x in x_top:
+        ax.add_patch(Circle((x, h-cover), 0.8, color='blue'))
+        
+    ax.set_xlim(-5, b+5); ax.set_ylim(-5, h+5); ax.set_aspect('equal')
+    plt.title("تفريد الحديد المحسوب آلياً")
     st.pyplot(fig)
 
-# منطقة النتائج الفنية
-as_total = (n_bot + n_add) * (np.pi * (phi/10)**2 / 4)
-st.success(f"مساحة التسليح المحققة: {as_total:.2f} cm²")
-
-# طباعة الختم في نهاية كل صفحة
+# الختم
 st.markdown("---")
-st.text_area("الختم الرسمي للمشروع", STAMP_TEXT, height=70)
-
-if st.button("توليد تقرير PDF للطباعة"):
-    st.info("جاري تجهيز التقرير بختم المهندس بيلان...")
+st.text(STAMP_TEXT)
