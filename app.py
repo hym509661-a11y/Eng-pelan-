@@ -1,55 +1,59 @@
-import streamlit as st
+import tkinter as tk
+from tkinter import messagebox
 
-# --- 1. إعدادات الصفحة والختم ---
-st.set_page_config(page_title="Petan Structural Pro", layout="wide")
+def calculate_column():
+    try:
+        # إدخال الحمولة التصميمية (Nu)
+        nu = float(entry_load.get())
+        # إدخال أبعاد العمود (b, h)
+        b = float(entry_width.get())
+        h = float(entry_height.get())
+        
+        # حساب مساحة البيتون Ac
+        ac = b * h
+        
+        # حساب مساحة التسليح التقريبية (فرضية 1%)
+        as_min = 0.01 * ac
+        
+        # نص الختم الخاص بك
+        stamp_info = "المهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات | 0998449697"
+        
+        result_text = f"--- نتائج التصميم ---\n"
+        result_text += f"مساحة المقطع: {ac} cm²\n"
+        result_text += f"التسليح المقترح: {as_min:.2f} cm²\n"
+        result_text += f"\n--------------------\n{stamp_info}"
+        
+        label_result.config(text=result_text)
+        
+    except ValueError:
+        messagebox.showerror("خطأ", "يرجى إدخال قيم عددية صحيحة")
 
-# [cite: 2026-02-18]
-eng_name = "المهندس المدني بيلان مصطفى عبدالكريم (Pelan)"
-phone = "0998449697" # [cite: 2026-02-15]
+# إنشاء الواجهة الرسومية (GUI)
+root = tk.Tk()
+root.title("برنامج الجواد المصغر - تصميم عناصر خرسانية")
+root.geometry("400x500")
 
-# --- 2. قسم المدخلات (Input Section) ---
-st.sidebar.header("📋 مدخلات التصميم")
-width = st.sidebar.number_input("عرض الجائز (mm)", value=250)
-depth = st.sidebar.number_input("ارتفاع الجائز (mm)", value=500)
-moment = st.sidebar.number_input("العزم التصميمي Mu (kN.m)", value=150.0)
-fy = st.sidebar.selectbox("إجهاد خضوع الحديد Fy", [400, 420, 500])
+tk.Label(root, text="تصميم أعمدة خرسانية", font=("Arial", 14, "bold")).pack(pady=10)
 
-# --- 3. العمليات الحسابية ---
-# حساب تقريبي للمساحة المطلوبة
-d_eff = depth - 50
-as_req = (moment * 10**6) / (0.9 * fy * 0.9 * d_eff)
-num_bars = int(as_req / 201) + 1  # افتراض قطر 16
+# الحقول
+tk.Label(root, text="الحمولة التصميمية Nu (kN):").pack()
+entry_load = tk.Entry(root)
+entry_load.pack()
 
-# --- 4. عرض المخطط (الرسم التخطيطي للحديد) ---
-st.title("🏗️ Petan Structural Analysis Pro")
-st.subheader("تفريد الحديد (Longitudinal Section)")
+tk.Label(root, text="عرض العمود b (cm):").pack()
+entry_width = tk.Entry(root)
+entry_width.pack()
 
-# رسم بسيط يمثل الجائز والحديد (بناءً على صورتك الأولى)
-st.markdown(f"""
-<div style="position: relative; width: 100%; height: 100px; background-color: #1a1a1a; border: 2px solid #555; margin-bottom: 20px;">
-    <div style="position: absolute; top: 15px; left: 5%; right: 5%; height: 4px; background-color: #2196F3;"></div>
-    <div style="position: absolute; top: 25px; left: 40%; color: #2196F3; font-weight: bold;">{num_bars} T 16 (Main Top)</div>
-    
-    <div style="display: flex; justify-content: space-around; width: 100%; height: 100%; align-items: center;">
-        {"<div style='width: 1px; height: 70px; background-color: #d32f2f; opacity: 0.5;'></div>" * 15}
-    </div>
-</div>
-""", unsafe_allow_html=True)
+tk.Label(root, text="ارتفاع العمود h (cm):").pack()
+entry_height = tk.Entry(root)
+entry_height.pack()
 
-# --- 5. المخرجات والختم ---
-col1, col2 = st.columns(2)
-with col1:
-    st.success(f"✅ المساحة المطلوبة: {as_req:.2f} mm²")
-with col2:
-    if num_bars > 8:
-        st.error(f"⚠️ العدد مبالغ فيه: {num_bars} أسياخ")
-    else:
-        st.info(f"🔹 التسليح: {num_bars} T 16")
+# زر الحساب
+btn_calc = tk.Button(root, text="حساب وتسجيل الختم", command=calculate_column, bg="blue", fg="white")
+btn_calc.pack(pady=20)
 
-if num_bars > 8:
-    st.warning("💡 نصيحة المهندس بيلان: يرجى زيادة عمق المقطع لتوفير الحديد.")
+# منطقة النتائج
+label_result = tk.Label(root, text="", justify="right")
+label_result.pack(pady=10)
 
-st.divider()
-st.write(f"### {eng_name}")
-st.write("دراسات - اشراف - تعهدات")
-st.write(f"📞 هاتف: {phone}")
+root.mainloop()
