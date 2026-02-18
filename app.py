@@ -1,59 +1,53 @@
-import tkinter as tk
-from tkinter import messagebox
+import streamlit as st
 
-def calculate_column():
-    try:
-        # إدخال الحمولة التصميمية (Nu)
-        nu = float(entry_load.get())
-        # إدخال أبعاد العمود (b, h)
-        b = float(entry_width.get())
-        h = float(entry_height.get())
-        
-        # حساب مساحة البيتون Ac
-        ac = b * h
-        
-        # حساب مساحة التسليح التقريبية (فرضية 1%)
-        as_min = 0.01 * ac
-        
-        # نص الختم الخاص بك
-        stamp_info = "المهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات | 0998449697"
-        
-        result_text = f"--- نتائج التصميم ---\n"
-        result_text += f"مساحة المقطع: {ac} cm²\n"
-        result_text += f"التسليح المقترح: {as_min:.2f} cm²\n"
-        result_text += f"\n--------------------\n{stamp_info}"
-        
-        label_result.config(text=result_text)
-        
-    except ValueError:
-        messagebox.showerror("خطأ", "يرجى إدخال قيم عددية صحيحة")
+# إعدادات الصفحة
+st.set_page_config(page_title="برنامج الجواد الهندسي", layout="centered")
 
-# إنشاء الواجهة الرسومية (GUI)
-root = tk.Tk()
-root.title("برنامج الجواد المصغر - تصميم عناصر خرسانية")
-root.geometry("400x500")
+# عنوان البرنامج
+st.title("🏗️ محاكي برنامج الجواد للتصميم الإنشائي")
+st.write(f"### المهندس المدني بيلان مصطفى عبدالكريم")
 
-tk.Label(root, text="تصميم أعمدة خرسانية", font=("Arial", 14, "bold")).pack(pady=10)
+# تصميم العناصر في القائمة الجانبية أو الرئيسية
+st.sidebar.header("إعدادات التصميم")
+element_type = st.sidebar.selectbox("اختر العنصر الإنشائي:", ["أعمدة مقيدة", "جوائز بسيطة", "قواعد منفردة"])
 
-# الحقول
-tk.Label(root, text="الحمولة التصميمية Nu (kN):").pack()
-entry_load = tk.Entry(root)
-entry_load.pack()
+# واجهة إدخال البيانات (مثل الجواد)
+st.subheader(f"بيانات {element_type}")
 
-tk.Label(root, text="عرض العمود b (cm):").pack()
-entry_width = tk.Entry(root)
-entry_width.pack()
+col1, col2 = st.columns(2)
 
-tk.Label(root, text="ارتفاع العمود h (cm):").pack()
-entry_height = tk.Entry(root)
-entry_height.pack()
+with col1:
+    fcu = st.number_input("إجهاد البيتون fcu (Mpa):", value=25)
+    fy = st.number_input("إجهاد الفولاذ fy (Mpa):", value=400)
+
+with col2:
+    b = st.number_input("عرض المقطع b (cm):", value=30)
+    h = st.number_input("ارتفاع المقطع h (cm):", value=50)
+
+nu = st.number_input("الحمولة التصميمية Nu (kN):", value=1000)
 
 # زر الحساب
-btn_calc = tk.Button(root, text="حساب وتسجيل الختم", command=calculate_column, bg="blue", fg="white")
-btn_calc.pack(pady=20)
+if st.button("تحليل وتصميم"):
+    # معادلة تصميم العمود التقريبية
+    # Nu = 0.35*fcu*Ac + 0.67*fy*As
+    ac = b * h
+    # حساب التسليح المطلوب
+    as_required = (nu * 10 - 0.35 * fcu * ac * 100) / (0.67 * fy) / 100
+    
+    st.success("تم الحساب بنجاح!")
+    
+    # عرض النتائج في جدول
+    st.table({
+        "العنصر": [element_type],
+        "مساحة البيتون (cm²)": [ac],
+        "التسليح المطلوب (cm²)": [round(max(as_required, 0.01 * ac), 2)]
+    })
 
-# منطقة النتائج
-label_result = tk.Label(root, text="", justify="right")
-label_result.pack(pady=10)
-
-root.mainloop()
+    # الختم الرسمي في الأسفل
+    st.markdown("---")
+    st.info(f"""
+    **ختم المهندس المصمم:**
+    * المهندس المدني: بيلان مصطفى عبدالكريم
+    * دراسات - اشراف - تعهدات
+    * جوال: 0998449697
+    """)
