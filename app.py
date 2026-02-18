@@ -1,43 +1,43 @@
 import streamlit as st
 
-# --- 1. الختم الرسمي للمهندس بيلان ---
-# تم تحديث النص وفقاً لطلبك بتاريخ 2026-02-18
-st_name = "المهندس المدني بيلان مصطفى عبدالكريم"
-st_info = "دراسات - اشراف - تعهدات"
-st_phone = "0998449697" # [cite: 2026-02-15]
+# 1. البيانات الشخصية (الختم المعتمد)
+# [cite: 2026-02-18]
+name = "المهندس المدني بيلان مصطفى عبدالكريم"
+job = "دراسات - اشراف - تعهدات"
+phone = "0998449697" # [cite: 2026-02-15]
 
-# --- 2. محاكاة النتائج (تأكد أن هذه المتغيرات موجودة في حساباتك) ---
-As_val = 3015.93  
+# 2. حسابات افتراضية (تأكد من وجودها في كودك)
+As_val = 3015.93
 num_bars = 15
 bar_phi = 16
 
-# --- 3. تحديد اللون بناءً على المنطق الهندسي ---
-# إذا كان عدد الأسياخ مبالغاً فيه (أكثر من 8) يظهر باللون الأحمر
-if num_bars > 8:
-    text_color = "#d32f2f" # أحمر
-    warning_box = f'<div style="background-color: #ffebee; color: #b71c1c; padding: 10px; border-radius: 5px; border-right: 5px solid #b71c1c; margin-bottom: 15px;">⚠️ تحذير: عدد الأسياخ ({num_bars}) كبير جداً. يرجى مراجعة العمق الإنشائي.</div>'
-else:
-    text_color = "#2e7d32" # أخضر
-    warning_box = ""
+# 3. تحديد حالة التصميم واللون
+# إذا كان عدد الأسياخ > 8 نعتبره مبالغاً فيه (أحمر)
+color = "#d32f2f" if num_bars > 8 else "#2e7d32"
 
-# --- 4. العرض النهائي (استخدام علامة الثلاث تنصيص لتجنب أخطاء السطور) ---
-design_template = f"""
-<div style="direction: rtl; text-align: right; font-family: sans-serif; border: 2px solid #1E88E5; padding: 20px; border-radius: 10px; background-color: white;">
-    <h3 style="color: #1E88E5; margin-top: 0;">نتائج تصميم برنامج Petan</h3>
+# 4. بناء القالب (هنا السر في التنسيق)
+# لاحظ استخدام f-string مع st.markdown
+design_html = f"""
+<div style="direction: rtl; text-align: right; border: 2px solid #1E88E5; padding: 15px; border-radius: 10px; background-color: #ffffff;">
+    <h3 style="color: #1E88E5; margin-bottom: 10px;">نتائج تصميم برنامج Petan</h3>
     
-    <p style="font-size: 18px;">مساحة الحديد: <b>{As_val:.2f} mm²</b></p>
+    <p style="font-size: 16px; margin: 5px 0;">مساحة الحديد: <b>{As_val:.2f} mm²</b></p>
     
-    <p style="font-size: 20px;">التسليح العلوي: <span style="color: {text_color}; font-weight: bold;">{num_bars} T {bar_phi}</span></p>
+    <p style="font-size: 18px; margin: 5px 0;">التسليح: <span style="color: {color}; font-weight: bold;">{num_bars} T {bar_phi}</span></p>
     
-    {warning_box}
+    <div style="background-color: #ffebee; color: #b71c1c; padding: 10px; border-radius: 5px; margin: 10px 0; font-weight: bold;">
+        ⚠️ تنبيه: العدد مبالغ فيه! يرجى زيادة العمق لتوفير الحديد.
+    </div>
     
-    <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee;">
-        <p style="margin: 0; font-weight: bold; color: #333;">{st_name}</p>
-        <p style="margin: 3px 0; color: #666; font-size: 14px;">{st_info}</p>
-        <p style="margin: 0; color: #1E88E5;">هاتف: {st_phone}</p>
+    <hr style="border: 0.5px solid #eee;">
+    
+    <div style="font-size: 14px;">
+        <p style="margin: 0; font-weight: bold;">{name}</p>
+        <p style="margin: 2px 0;">{job}</p>
+        <p style="margin: 0; color: #1E88E5;">هاتف: {phone}</p>
     </div>
 </div>
 """
 
-# عرض الكود في واجهة Streamlit
-st.markdown(design_template, unsafe_allow_html=True)
+# 5. السطر الأهم الذي سيحل مشكلة ظهور الأكواد
+st.markdown(design_html, unsafe_allow_html=True)
