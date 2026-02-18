@@ -1,100 +1,69 @@
-import math
+import tkinter as tk
+from tkinter import messagebox
 
-class SyrianStructuralFullSuite:
-    def __init__(self, fpc=200, fy=3600):
-        # البيانات الأساسية للمكتب الهندسي - م. بيلان مصطفى عبدالكريم
-        self.fpc = fpc  # kg/cm2
-        self.fy = fy    # kg/cm2
-        self.phi_flexure = 0.9
-        self.phi_compression = 0.65
-        self.stamp = """
-        --------------------------------------------------
-        المهندس المدني: بيلان مصطفى عبدالكريم
-        دراسات - إشراف - تعهدات
-        هاتف: 0998449697
-        --------------------------------------------------
-        """
+class SyrianEngineerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("برنامج المهندس بيلان عبدالكريم - الكود السوري")
+        self.root.geometry("450x600")
+        
+        # العنوان الرئيسي والختم
+        tk.Label(root, text="المكتب الهندسي: بيلان مصطفى عبدالكريم", font=("Arial", 12, "bold")).pack(pady=10)
+        tk.Label(root, text="دراسات - إشراف - تعهدات | 0998449697", font=("Arial", 10)).pack()
+        
+        tk.Frame(height=2, bd=1, relief=tk.SUNKEN).pack(fill=tk.X, padx=10, pady=10)
 
-    # --- 1. محرك البلاطات وتوزيع الأحمال ---
-    def slab_analysis(self, L_long, L_short, dead_load, live_load):
-        qu = (1.4 * dead_load) + (1.7 * live_load)
-        r = L_long / L_short
-        if r > 2:
-            qe_m = (qu * L_short) / 2
-            type_s = "One-way"
-        else:
-            qe_m = (qu * L_short / 3) * (1 - 0.5 * (1/r)**2)
-            type_s = "Two-way"
-        return qu, qe_m, type_s
+        # مدخلات البيانات
+        self.create_input("العزم التصميمي (Mu) طن.متر:", "12")
+        self.create_input("عرض الجائز (b) سم:", "20")
+        self.create_input("الارتفاع الفعال (d) سم:", "52")
+        self.create_input("مقاومة البيتون (f'c) كغ/سم2:", "200")
 
-    # --- 2. محرك تصميم الجوائز (العطف) ---
-    def design_beam(self, Mu_ton_m, b=20, d=52):
-        Mu_kgcm = Mu_ton_m * 10**5
-        rn = Mu_kgcm / (self.phi_flexure * b * d**2)
-        # معادلة نسبة التسليح
-        rho = (0.85 * self.fpc / self.fy) * (1 - math.sqrt(1 - (2.353 * rn / self.fpc)))
-        # الحدود الدنيا للكود السوري
-        rho_min = max(14/self.fy, (0.25 * math.sqrt(self.fpc))/self.fy)
-        rho = max(rho, rho_min)
-        as_req = rho * b * d
-        return self.select_bars(as_req, "beam")
+        # زر الحساب
+        self.calc_btn = tk.Button(root, text="احسب التسليح حسب الكود السوري", command=self.calculate, bg="#2c3e50", fg="white", font=("Arial", 10, "bold"))
+        self.calc_btn.pack(pady=20)
 
-    # --- 3. محرك تصميم الأعمدة (تراكمي) ---
-    def design_column(self, total_pu_ton, b=30, h=30):
-        pu_kg = total_pu_ton * 1000
-        ag = b * h
-        ast = (pu_kg / (0.8 * self.phi_compression) - 0.85 * self.fpc * ag) / (self.fy - 0.85 * self.fpc)
-        ast = max(ast, 0.01 * ag) # حد أدنى 1%
-        return self.select_bars(ast, "column")
+        # منطقة النتائج
+        self.result_label = tk.Label(root, text="النتائج ستظهر هنا", font=("Arial", 11, "italic"), fg="blue", justify="right")
+        self.result_label.pack(pady=10)
 
-    # --- 4. محرك الزلازل (القص القاعدي) ---
-    def seismic_base_shear(self, W_total, zone_z=0.15, I=1.0, R=5.5):
-        # C هو معامل الاستجابة (نفرضه 2.75 للقيمة العظمى)
-        C = 2.75
-        V = (zone_z * I * C / R) * W_total
-        return round(V, 2)
+    def create_input(self, label_text, default_val):
+        frame = tk.Frame(self.root)
+        frame.pack(fill=tk.X, padx=20, pady=5)
+        lbl = tk.Label(frame, text=label_text, width=25, anchor="e")
+        lbl.pack(side=tk.RIGHT)
+        ent = tk.Entry(frame)
+        ent.insert(0, default_val)
+        ent.pack(side=tk.RIGHT, expand=True, padx=5)
+        setattr(self, label_text.split('(')[0].strip(), ent)
 
-    # --- 5. محرك القواعد (الأحمال الخدمية) ---
-    def design_footing(self, P_service_ton, sigma_allowable_kgcm2=2.0):
-        # تحويل إجهاد التربة لـ t/m2
-        sigma_tm2 = sigma_allowable_kgcm2 * 10
-        area_req = (P_service_ton * 1.1) / sigma_tm2 # 1.1 لزيادة وزن القاعدة
-        side = math.sqrt(area_req)
-        return round(side, 2)
+    def calculate(self):
+        try:
+            # جلب البيانات من الواجهة
+            Mu = float(getattr(self, "العزم التصميمي").get()) * 10**5
+            b = float(getattr(self, "عرض الجائز").get())
+            d = float(getattr(self, "الارتفاع الفعال").get())
+            fpc = float(getattr(self, "مقاومة البيتون").get())
+            fy = 3600
+            
+            # المعادلات البرمجية (الكود السوري)
+            rn = Mu / (0.9 * b * d**2)
+            import math
+            rho = (0.85 * fpc / fy) * (1 - math.sqrt(1 - (2.353 * rn / fpc)))
+            rho_min = max(14/fy, (0.25 * math.sqrt(fpc))/fy)
+            rho = max(rho, rho_min)
+            as_req = rho * b * d
+            
+            # عرض النتيجة بختم المهندس
+            res_text = f"مساحة الحديد المطلوبة: {as_req:.2f} cm2\n"
+            res_text += f"التسليح المقترح: {math.ceil(as_req/2.01)} T 16\n"
+            res_text += "\nتمت الدراسة: م. بيلان عبدالكريم"
+            
+            self.result_label.config(text=res_text, fg="green")
+        except Exception as e:
+            messagebox.showerror("خطأ", "يرجى التأكد من إدخال أرقام صحيحة")
 
-    # --- محرك اختيار الأقطار المتوفرة في سوريا ---
-    def select_bars(self, as_req, mode):
-        bars = {12: 1.13, 14: 1.54, 16: 2.01, 18: 2.54, 20: 3.14}
-        results = []
-        for size, area in bars.items():
-            n = math.ceil(as_req / area)
-            if mode == "column" and n % 2 != 0: n += 1
-            if 2 <= n <= 12:
-                results.append((n, size, n * area))
-        best = min(results, key=lambda x: x[2])
-        return f"{best[0]} T {best[1]} (As={round(best[2],2)}cm2)"
-
-# --- مثال تشغيل كامل للمنشأ ---
-engine = SyrianStructuralFullSuite()
-
-# 1. دراسة بلاطة وجائز
-qu, qe_m, s_type = engine.slab_analysis(5, 4, 0.6, 0.2)
-beam_steel = engine.design_beam(Mu_ton_m=12)
-
-# 2. دراسة عمود يحمل 150 طن
-col_steel = engine.design_column(150, 30, 50)
-
-# 3. دراسة زلزالية لمبنى وزنه 2000 طن
-v_shear = engine.seismic_base_shear(2000)
-
-# 4. دراسة قاعدة لعمود يحمل 100 طن خدمي
-f_side = engine.design_footing(100)
-
-# --- طباعة التقرير النهائي الشامل ---
-print(engine.stamp)
-print(f"1. نتائج البلاطة: نوع {s_type} | الحمل التصميمي {qu:.2f} t/m2")
-print(f"2. تسليح الجائز المقترح: {beam_steel}")
-print(f"3. تسليح العمود (30x50): {col_steel}")
-print(f"4. قوة القص الزلزالية للمبنى: {v_shear} t")
-print(f"5. أبعاد القاعدة المربعة (صخر/تربة): {f_side} x {f_side} م")
-print("\n--- تمت الدراسة بحذافيرها وفق الكود العربي السوري لعام 2012 ---")
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SyrianEngineerApp(root)
+    root.mainloop()
