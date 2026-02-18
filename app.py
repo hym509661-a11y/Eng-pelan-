@@ -1,41 +1,52 @@
 import streamlit as st
 
-# 1. تعريف البيانات الشخصية (الختم)
+# --- 1. بيانات المهندس بيلان (الختم الرسمي) ---
+# تم تحديث الختم بناءً على طلبك بتاريخ 2026-02-18
 engineer_name = "المهندس المدني بيلان مصطفى عبدالكريم"
 engineer_info = "دراسات - اشراف - تعهدات"
 engineer_phone = "0998449697"
 
-# 2. منطق الحسابات (مثال)
-# افترضنا أن هذه المتغيرات قادمة من المدخلات في برنامجك
-As_required = 3015.93  # مساحة افتراضية (مثلاً 15 T 16)
-is_over_reinforced = True # حالة افتراضية للتجربة
+# --- 2. مدخلات افتراضية (هنا نضع منطق الحسابات) ---
+# لنفترض أننا نحسب عدد الأسياخ بناءً على القطر (مثلاً T16)
+As_required = 3015.0  # المساحة الكلية
+bar_diameter = 16
+area_single_bar = (3.14159 * (bar_diameter**2)) / 4
+num_bars = int(As_required / area_single_bar) + 1 # الناتج سيكون 15 سيخ تقريباً
 
-# 3. صياغة التنبيهات
-warnings_html = ""
-if is_over_reinforced:
-    warnings_html = """
-    <div style="color: #D32F2F; background-color: #FFEBEE; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-        ⚠️ <b>تنبيه هندسي:</b> المقطع متجاوز للنسبة القصوى. <br>
-        💡 نصيحة بيلان: يرجى زيادة عمق المقطع لتوفير الحديد وضمان سلامة الصب.
+# --- 3. منطق التلوين التلقائي (Dynamic Coloring) ---
+# إذا زاد عدد الأسياخ عن 8 في الطبقة الواحدة نعتبره خطراً
+bar_color = "#2e7d32" # أخضر (حالة آمنة)
+warning_msg = ""
+
+if num_bars > 8:
+    bar_color = "#d32f2f" # أحمر (حالة مبالغ فيها)
+    warning_msg = f"""
+    <div style="background-color: #ffebee; color: #b71c1c; padding: 15px; border-radius: 8px; border-right: 5px solid #b71c1c; margin: 15px 0;">
+        ⚠️ <b>تحذير هندسي:</b> عدد الأسياخ ({num_bars}) كبير جداً لمقطع واحد!<br>
+        💡 <b>نصيحة بيلان:</b> جرب زيادة عمق الجائز أو استخدام قطر أكبر (T20) لتجنب التعشيش.
     </div>
     """
 
-# 4. تجميع مخرجات التصميم والختم في قالب واحد
-design_output = f"""
-<div style="direction: rtl; text-align: right; font-family: sans-serif; border: 2px solid #1E88E5; padding: 20px; border-radius: 15px;">
-    <h2 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 10px;">نتائج التصميم الإنشائي</h2>
+# --- 4. قالب التصميم النهائي (HTML + CSS) ---
+design_html = f"""
+<div style="direction: rtl; text-align: right; font-family: 'Tahoma', sans-serif; border: 2px solid #1e88e5; padding: 25px; border-radius: 15px; background-color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
     
-    <p style="font-size: 18px;">مساحة الحديد المطلوبة: <span style="color: #2E7D32; font-weight: bold;">{As_required:.2f} mm²</span></p>
+    <h2 style="color: #1e88e5; text-align: center; margin-bottom: 20px;">Petan Structural Analysis Pro</h2>
     
-    {warnings_html}
-    
-    <div style="margin-top: 30px; padding-top: 15px; border-top: 2px dashed #1E88E5; background-color: #f9f9f9; padding: 10px; border-radius: 10px;">
-        <h4 style="margin: 0; color: #333;">{engineer_name}</h4>
-        <p style="margin: 5px 0; color: #666;">{engineer_info}</p>
-        <p style="margin: 0; color: #1E88E5; font-weight: bold;">هاتف: {engineer_phone}</p>
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+        <p style="font-size: 18px; margin: 5px 0;">مساحة الحديد المطلوبة: <b>{As_required:.2f} mm²</b></p>
+        <p style="font-size: 18px; margin: 5px 0;">التسليح المقترح: <span style="color: {bar_color}; font-weight: bold; font-size: 22px;">{num_bars} T {bar_diameter}</span></p>
+    </div>
+
+    {warning_msg}
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #e3f2fd; border-radius: 10px; border: 1px solid #1e88e5;">
+        <h4 style="margin: 0; color: #0d47a1;">{engineer_name}</h4>
+        <p style="margin: 5px 0; color: #455a64; font-size: 14px;">{engineer_info}</p>
+        <p style="margin: 0; color: #1e88e5; font-weight: bold;">تواصل: {engineer_phone}</p>
     </div>
 </div>
 """
 
-# 5. عرض النتيجة النهائية في واجهة Streamlit
-st.markdown(design_output, unsafe_allow_html=True)
+# --- 5. العرض النهائي في Streamlit ---
+st.markdown(design_html, unsafe_allow_html=True)
