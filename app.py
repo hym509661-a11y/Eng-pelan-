@@ -1,52 +1,43 @@
 import streamlit as st
 
-# --- 1. بيانات المهندس بيلان (الختم الرسمي) ---
-# تم تحديث الختم بناءً على طلبك بتاريخ 2026-02-18
-engineer_name = "المهندس المدني بيلان مصطفى عبدالكريم"
-engineer_info = "دراسات - اشراف - تعهدات"
-engineer_phone = "0998449697"
+# --- 1. الختم الرسمي للمهندس بيلان ---
+# تم تحديث النص وفقاً لطلبك بتاريخ 2026-02-18
+st_name = "المهندس المدني بيلان مصطفى عبدالكريم"
+st_info = "دراسات - اشراف - تعهدات"
+st_phone = "0998449697" # [cite: 2026-02-15]
 
-# --- 2. مدخلات افتراضية (هنا نضع منطق الحسابات) ---
-# لنفترض أننا نحسب عدد الأسياخ بناءً على القطر (مثلاً T16)
-As_required = 3015.0  # المساحة الكلية
-bar_diameter = 16
-area_single_bar = (3.14159 * (bar_diameter**2)) / 4
-num_bars = int(As_required / area_single_bar) + 1 # الناتج سيكون 15 سيخ تقريباً
+# --- 2. محاكاة النتائج (تأكد أن هذه المتغيرات موجودة في حساباتك) ---
+As_val = 3015.93  
+num_bars = 15
+bar_phi = 16
 
-# --- 3. منطق التلوين التلقائي (Dynamic Coloring) ---
-# إذا زاد عدد الأسياخ عن 8 في الطبقة الواحدة نعتبره خطراً
-bar_color = "#2e7d32" # أخضر (حالة آمنة)
-warning_msg = ""
-
+# --- 3. تحديد اللون بناءً على المنطق الهندسي ---
+# إذا كان عدد الأسياخ مبالغاً فيه (أكثر من 8) يظهر باللون الأحمر
 if num_bars > 8:
-    bar_color = "#d32f2f" # أحمر (حالة مبالغ فيها)
-    warning_msg = f"""
-    <div style="background-color: #ffebee; color: #b71c1c; padding: 15px; border-radius: 8px; border-right: 5px solid #b71c1c; margin: 15px 0;">
-        ⚠️ <b>تحذير هندسي:</b> عدد الأسياخ ({num_bars}) كبير جداً لمقطع واحد!<br>
-        💡 <b>نصيحة بيلان:</b> جرب زيادة عمق الجائز أو استخدام قطر أكبر (T20) لتجنب التعشيش.
-    </div>
-    """
+    text_color = "#d32f2f" # أحمر
+    warning_box = f'<div style="background-color: #ffebee; color: #b71c1c; padding: 10px; border-radius: 5px; border-right: 5px solid #b71c1c; margin-bottom: 15px;">⚠️ تحذير: عدد الأسياخ ({num_bars}) كبير جداً. يرجى مراجعة العمق الإنشائي.</div>'
+else:
+    text_color = "#2e7d32" # أخضر
+    warning_box = ""
 
-# --- 4. قالب التصميم النهائي (HTML + CSS) ---
-design_html = f"""
-<div style="direction: rtl; text-align: right; font-family: 'Tahoma', sans-serif; border: 2px solid #1e88e5; padding: 25px; border-radius: 15px; background-color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+# --- 4. العرض النهائي (استخدام علامة الثلاث تنصيص لتجنب أخطاء السطور) ---
+design_template = f"""
+<div style="direction: rtl; text-align: right; font-family: sans-serif; border: 2px solid #1E88E5; padding: 20px; border-radius: 10px; background-color: white;">
+    <h3 style="color: #1E88E5; margin-top: 0;">نتائج تصميم برنامج Petan</h3>
     
-    <h2 style="color: #1e88e5; text-align: center; margin-bottom: 20px;">Petan Structural Analysis Pro</h2>
+    <p style="font-size: 18px;">مساحة الحديد: <b>{As_val:.2f} mm²</b></p>
     
-    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-        <p style="font-size: 18px; margin: 5px 0;">مساحة الحديد المطلوبة: <b>{As_required:.2f} mm²</b></p>
-        <p style="font-size: 18px; margin: 5px 0;">التسليح المقترح: <span style="color: {bar_color}; font-weight: bold; font-size: 22px;">{num_bars} T {bar_diameter}</span></p>
-    </div>
-
-    {warning_msg}
-
-    <div style="margin-top: 30px; padding: 15px; background-color: #e3f2fd; border-radius: 10px; border: 1px solid #1e88e5;">
-        <h4 style="margin: 0; color: #0d47a1;">{engineer_name}</h4>
-        <p style="margin: 5px 0; color: #455a64; font-size: 14px;">{engineer_info}</p>
-        <p style="margin: 0; color: #1e88e5; font-weight: bold;">تواصل: {engineer_phone}</p>
+    <p style="font-size: 20px;">التسليح العلوي: <span style="color: {text_color}; font-weight: bold;">{num_bars} T {bar_phi}</span></p>
+    
+    {warning_box}
+    
+    <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee;">
+        <p style="margin: 0; font-weight: bold; color: #333;">{st_name}</p>
+        <p style="margin: 3px 0; color: #666; font-size: 14px;">{st_info}</p>
+        <p style="margin: 0; color: #1E88E5;">هاتف: {st_phone}</p>
     </div>
 </div>
 """
 
-# --- 5. العرض النهائي في Streamlit ---
-st.markdown(design_html, unsafe_allow_html=True)
+# عرض الكود في واجهة Streamlit
+st.markdown(design_template, unsafe_allow_html=True)
