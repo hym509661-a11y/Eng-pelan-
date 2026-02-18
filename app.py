@@ -1,34 +1,55 @@
 import streamlit as st
 
-# 1. تعريف الختم الرسمي (البيانات التي طلبتها)
+# --- 1. إعدادات الصفحة والختم ---
+st.set_page_config(page_title="Petan Structural Pro", layout="wide")
+
 # [cite: 2026-02-18]
-engineer_name = "المهندس المدني بيلان مصطفى عبدالكريم (Pelan)"
-job_title = "دراسات - اشراف - تعهدات"
-phone_number = "0998449697" # [cite: 2026-02-15]
+eng_name = "المهندس المدني بيلان مصطفى عبدالكريم (Pelan)"
+phone = "0998449697" # [cite: 2026-02-15]
 
-# 2. نتائج الحسابات (هنا نضع القيم التي تظهر في صورتك)
-st.header("Petan Structural Analysis Pro")
+# --- 2. قسم المدخلات (Input Section) ---
+st.sidebar.header("📋 مدخلات التصميم")
+width = st.sidebar.number_input("عرض الجائز (mm)", value=250)
+depth = st.sidebar.number_input("ارتفاع الجائز (mm)", value=500)
+moment = st.sidebar.number_input("العزم التصميمي Mu (kN.m)", value=150.0)
+fy = st.sidebar.selectbox("إجهاد خضوع الحديد Fy", [400, 420, 500])
 
-as_required = 3015.93  # مساحة الحديد المطلوبة
-num_bars = 15          # عدد الأسياخ (المبالغ فيه)
+# --- 3. العمليات الحسابية ---
+# حساب تقريبي للمساحة المطلوبة
+d_eff = depth - 50
+as_req = (moment * 10**6) / (0.9 * fy * 0.9 * d_eff)
+num_bars = int(as_req / 201) + 1  # افتراض قطر 16
 
-# 3. عرض النتائج باستخدام صناديق ملونة جاهزة
-st.subheader("نتائج التسليح العلوي")
+# --- 4. عرض المخطط (الرسم التخطيطي للحديد) ---
+st.title("🏗️ Petan Structural Analysis Pro")
+st.subheader("تفريد الحديد (Longitudinal Section)")
 
-# عرض المساحة في صندوق أخضر
-st.success(f"المساحة المطلوبة: {as_required} mm²")
+# رسم بسيط يمثل الجائز والحديد (بناءً على صورتك الأولى)
+st.markdown(f"""
+<div style="position: relative; width: 100%; height: 100px; background-color: #1a1a1a; border: 2px solid #555; margin-bottom: 20px;">
+    <div style="position: absolute; top: 15px; left: 5%; right: 5%; height: 4px; background-color: #2196F3;"></div>
+    <div style="position: absolute; top: 25px; left: 40%; color: #2196F3; font-weight: bold;">{num_bars} T 16 (Main Top)</div>
+    
+    <div style="display: flex; justify-content: space-around; width: 100%; height: 100%; align-items: center;">
+        {"<div style='width: 1px; height: 70px; background-color: #d32f2f; opacity: 0.5;'></div>" * 15}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# 4. منطق التحذير التلقائي (تغيير اللون)
+# --- 5. المخرجات والختم ---
+col1, col2 = st.columns(2)
+with col1:
+    st.success(f"✅ المساحة المطلوبة: {as_req:.2f} mm²")
+with col2:
+    if num_bars > 8:
+        st.error(f"⚠️ العدد مبالغ فيه: {num_bars} أسياخ")
+    else:
+        st.info(f"🔹 التسليح: {num_bars} T 16")
+
 if num_bars > 8:
-    # عرض تحذير باللون الأحمر إذا كان العدد كبيراً
-    st.error(f"⚠️ العدد مبالغ فيه جداً: {num_bars} أسياخ T16")
-    st.warning("نصيحة المهندس بيلان: يرجى زيادة عمق المقطع لتوفير الحديد ومنع التعشيش.")
-else:
-    # عرض النتيجة باللون الأزرق إذا كان العدد منطقياً
-    st.info(f"التسليح المقترح: {num_bars} T 16")
+    st.warning("💡 نصيحة المهندس بيلان: يرجى زيادة عمق المقطع لتوفير الحديد.")
 
-# 5. الختم الرسمي في أسفل الصفحة
-st.divider()  # خط فاصل
-st.write(f"### {engineer_name}")
-st.write(f"**{job_title}**")
-st.write(f"📞 هاتف: {phone_number}")
+st.divider()
+st.write(f"### {eng_name}")
+st.write("دراسات - اشراف - تعهدات")
+st.write(f"📞 هاتف: {phone}")
