@@ -2,81 +2,77 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 
-# إعدادات الهوية البصرية للبرنامج
-st.set_page_config(page_title="برنامج المهندس بيلان الإنشائي", layout="wide")
+# بيانات الختم المحفوظة
+STAMP_TEXT = "المهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات | 0998449697"
 
-# الختم الخاص بك (يظهر في كل التقارير)
-STAMP = """
-المهندس المدني بيلان مصطفى عبدالكريم
-دراسات - اشراف - تعهدات | 0998449697
-"""
-
-def draw_section(b, h, bars_count, bar_dia):
-    """رسم مقطع عرضي في العنصر مع تفريد الحديد"""
-    fig, ax = plt.subplots(figsize=(4, 4))
-    # رسم الخرسانة
-    rect = plt.Rectangle((0, 0), b, h, color='lightgrey', label='Concrete')
+def draw_detailed_section(b, h, bot_bars, top_bars, add_bars):
+    fig, ax = plt.subplots(figsize=(5, 6))
+    # رسم بيتون الجائز
+    rect = plt.Rectangle((0, 0), b, h, color='#E0E0E0', label='Concrete')
     ax.add_patch(rect)
-    # رسم الحديد (مثال مبسط)
-    cover = 2.5
-    spacing = (b - 2*cover) / (bars_count - 1) if bars_count > 1 else 0
-    for i in range(bars_count):
-        circle = plt.Circle((cover + i*spacing, cover), bar_dia/10, color='red')
-        ax.add_patch(circle)
-        circle2 = plt.Circle((cover + i*spacing, h-cover), bar_dia/10, color='red')
-        ax.add_patch(circle2)
     
-    ax.set_xlim(-5, b+5)
-    ax.set_ylim(-5, h+5)
+    cover = 3.0
+    # رسم الأساور (Stirrups)
+    stirrup = plt.Rectangle((cover/2, cover/2), b-cover, h-cover, fill=False, edgecolor='black', linewidth=2)
+    ax.add_patch(stirrup)
+
+    # دالة لرسم الأسياخ
+    def plot_bars(count, y_pos, color, label):
+        if count > 0:
+            x_space = np.linspace(cover + 1, b - cover - 1, count)
+            for x in x_space:
+                circle = plt.Circle((x, y_pos), 0.8, color=color)
+                ax.add_patch(circle)
+
+    # 1. الحديد السفلي (الرئيسي) - باللون الأحمر
+    plot_bars(bot_bars, cover + 1, 'red', 'سفلي')
+    
+    # 2. الحديد العلوي (التعليق) - باللون الأزرق
+    plot_bars(top_bars, h - cover - 1, 'blue', 'تعليق')
+    
+    # 3. الحديد الإضافي (إن وجد) - باللون الأخضر
+    if add_bars > 0:
+        plot_bars(add_bars, cover + 3.5, 'green', 'إضافي')
+
+    ax.set_xlim(-5, b + 5)
+    ax.set_ylim(-5, h + 5)
     ax.set_aspect('equal')
-    plt.title(f"مقطع عرضي {b}x{h}")
+    plt.title(f"تفصيل تسليح المقطع ({b}x{h})")
     return fig
 
-# القائمة الجانبية لاختيار العنصر (مثل تبويبات الجواد)
-st.sidebar.title("🏗️ قائمة العناصر")
-choice = st.sidebar.radio("اختر نوع الدراسة:", 
-    ["الجوائز المستمرة (عزوم وقص)", "الأعمدة والتحميل الشاقولي", "الأساسات (فرش وغطاء)", "البلاطات المسمطة"])
+st.set_page_config(page_title="برنامج المهندس بيلان - التفريد الدقيق")
+st.title("🏗️ نظام تفريد الحديد الاحترافي")
 
-st.title(f"تحليل وتصميم: {choice}")
+with st.sidebar:
+    st.header("بيانات المقطع")
+    b = st.number_input("عرض الجائز (cm)", value=30)
+    h = st.number_input("ارتفاع الجائز (cm)", value=60)
+    st.markdown("---")
+    st.header("حسابات التسليح")
+    fcu = st.number_input("fcu (MPa)", value=25)
+    fy = st.number_input("fy (MPa)", value=400)
 
-# منطقة المدخلات المشتركة
-with st.expander("المعطيات العامة (الكود العربي السوري)"):
-    col_m1, col_m2 = st.columns(2)
-    fcu = col_m1.number_input("إجهاد البيتون fcu (MPa)", value=25)
-    fy = col_m2.number_input("إجهاد الشد fy (MPa)", value=400)
+col1, col2 = st.columns(2)
 
-if choice == "الجوائز المستمرة (عزوم وقص)":
-    L = st.number_input("طول المجاز (m)", value=5.0)
-    w = st.number_input("الحمولة الموزعة (kN/m)", value=30.0)
-    
-    # حسابات العزوم والقص (بسيطة كمثال)
-    M_max = (w * L**2) / 8
-    V_max = (w * L) / 2
-    
-    st.info(f"العزم الأعظمي: {M_max:.2f} kN.m | القص الأعظمي: {V_max:.2f} kN")
-    
-    # رسم مخطط العزوم
-    x = np.linspace(0, L, 100)
-    y = (w * x / 2) * (L - x)
-    fig_m, ax_m = plt.subplots()
-    ax_m.plot(x, y, label="Moment Diagram")
-    ax_m.invert_yaxis() # العزم لأسفل في البيتون
-    st.pyplot(fig_m)
+with col1:
+    st.subheader("إدخال عدد الأسياخ")
+    n_bot = st.number_input("عدد الأسياخ السفلية (الرئيسية)", min_value=2, value=4)
+    n_top = st.number_input("عدد أسياخ التعليق (علوية)", min_value=2, value=2)
+    n_add = st.number_input("عدد الأسياخ الإضافية", min_value=0, value=0)
+    phi = st.selectbox("قطر السيخ المستخدم (mm)", [12, 14, 16, 18, 20, 25])
 
-elif choice == "الأساسات (فرش وغطاء)":
-    P = st.number_input("الحمولة المنقولة من العمود (kN)", value=1200)
-    sigma_allow = st.number_input("إجهاد التربة المسموح (kg/cm2)", value=2.0)
-    
-    area_req = (P / 100) / sigma_allow # تحويل تقريبي
-    side = np.sqrt(area_req)
-    
-    st.success(f"الأبعاد المقترحة للأساس: {side:.2f} m x {side:.2f} m")
-    st.write("تفريد الحديد (فرش وغطاء): يتم حساب القطر بناءً على العزم عند وجه العمود.")
+with col2:
+    st.subheader("الرسم الهندسي")
+    fig = draw_detailed_section(b, h, n_bot, n_top, n_add)
+    st.pyplot(fig)
 
-# منطقة المخرجات النهائية والختم
+# منطقة النتائج الفنية
+as_total = (n_bot + n_add) * (np.pi * (phi/10)**2 / 4)
+st.success(f"مساحة التسليح المحققة: {as_total:.2f} cm²")
+
+# طباعة الختم في نهاية كل صفحة
 st.markdown("---")
-if st.button("إصدار تقرير التصميم النهائي"):
-    st.subheader("التقرير الفني النهائي")
-    st.write(f"تم التصميم وفق معطيات المشروع المقدمة.")
-    st.pyplot(draw_section(30, 60, 4, 16)) # رسم افتراضي للمقطع
-    st.code(STAMP, language="") # عرض الختم بشكل رسمي
+st.text_area("الختم الرسمي للمشروع", STAMP_TEXT, height=70)
+
+if st.button("توليد تقرير PDF للطباعة"):
+    st.info("جاري تجهيز التقرير بختم المهندس بيلان...")
