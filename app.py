@@ -22,122 +22,117 @@ st.markdown("""
     </style>
     <div class="header-box">
         <h1 style='color: #38bdf8; margin:0;'>Pelan Structural Analysis Pro</h1>
-        <p style='color: #94a3b8;'>نظام التفاصيل الإنشائية الذكي | م. بيلان عبد الكريم</p>
+        <p style='color: #94a3b8;'>نظام التصميم الإنشائي المتكامل | م. بيلان عبد الكريم</p>
     </div>
 """, unsafe_allow_html=True)
 
-# 2. المدخلات الهندسية
+# 2. القائمة الجانبية مع تحديد نوع المساند بدقة
 with st.sidebar:
-    st.header("⚙️ المعطيات التصميمية")
+    st.header("⚙️ الإعدادات الهندسية")
     L = st.number_input("طول البحر L (m):", 1.0, 20.0, 5.0)
     wu = st.number_input("الحمل Wu (t/m):", 0.1, 50.0, 4.0)
+    
+    st.divider()
+    st.subheader("📍 نمذجة المساند")
+    left_support = st.selectbox("المسند الأيسر (A):", ["وثاقة (Fixed)", "مفصلي ثابت (Hinged)", "منزلق (Roller)"])
+    right_support = st.selectbox("المسند الأيمن (B):", ["وثاقة (Fixed)", "مفصلي ثابت (Hinged)", "منزلق (Roller)", "ظفر (Free/Cantilever)"])
+    
     st.divider()
     B = st.number_input("العرض B (cm):", 20, 100, 30)
     h = st.number_input("الارتفاع h (cm):", 20, 200, 60)
     phi_main = st.selectbox("قطر الحديد الرئيسي (mm):", [14, 16, 18, 20, 25], index=1)
-    phi_sec = st.selectbox("قطر الحديد الإضافي/العلوي (mm):", [10, 12, 14, 16], index=1)
-    stirrup_phi = 8
+    phi_sec = st.selectbox("قطر الحديد الثانوي (mm):", [10, 12, 14, 16], index=1)
+    fy = 4000
 
-# 3. المحرك الحسابي (Structural Engine)
-fy = 4000
-d = h - 5 # العمق الفعال
-max_m_pos = (wu * L**2) / 8 # العزم الموجب (بسيط)
-max_m_neg = (wu * L**2) / 12 # العزم السالب (افتراضي للوثاقة)
+# 3. منطق التحليل الإنشائي وتوزيع الحديد
+d = h - 5
+is_cantilever = (right_support == "ظفر (Free/Cantilever)")
 
-# حساب عدد الأسياخ
-def calc_as(moment, diameter):
-    as_req = (moment * 10**5) / (0.87 * fy * d)
+# حساب العزوم بشكل تقريبي بناء على نوع الجملة
+if is_cantilever:
+    max_m = (wu * L**2) / 2
+    iron_location = "top" # الحديد الرئيسي فوق في الكابولي
+else:
+    max_m = (wu * L**2) / 8
+    iron_location = "bottom" # الحديد الرئيسي تحت في الجائز البسيط
+
+def calc_n(moment, diameter):
+    as_req = (abs(moment) * 10**5) / (0.87 * fy * d)
     area_bar = np.pi * (diameter/10)**2 / 4
     return max(int(np.ceil(as_req / area_bar)), 2)
 
-n_main = calc_as(max_m_pos, phi_main) # سفلي
-n_top = 2 # علوي علاقات أساور
-n_extra = 2 if L > 4 else 0 # حديد إضافي عند المساند
+n_main = calc_n(max_m, phi_main)
 
-# 4. الرسم الهندسي الديناميكي
-st.subheader("🏗️ المخططات التنفيذية وتفريد الحديد")
-tab1, tab2 = st.tabs(["المقطع الطولي والجانبي", "جدول الكميات"])
+# 4. الرسم الهندسي
+st.subheader("🏗️ المخططات الإنشائية الديناميكية")
+col1, col2 = st.columns([2.5, 1])
 
-with tab1:
-    col1, col2 = st.columns([2.5, 1])
+with col1:
+    fig_l, ax_l = plt.subplots(figsize=(12, 5))
+    ax_l.set_aspect('equal')
+    L_cm = L * 100
+    cov = 5
     
-    with col1:
-        # --- رسم المقطع الطولي (Longitudinal Section) ---
-        fig_l, ax_l = plt.subplots(figsize=(12, 5))
-        ax_l.set_aspect('equal')
-        L_cm = L * 100
-        cov = 5
-        
-        # رسم جسم البيتون
-        ax_l.add_patch(patches.Rectangle((0, 0), L_cm, h, color='#334155', alpha=0.3))
-        
-        # 1. الحديد السفلي الرئيسي (Main Bottom)
-        ax_l.plot([cov, L_cm-cov], [cov, cov], color='#38bdf8', lw=3) # السيخ
-        ax_l.plot([cov, cov], [cov, cov+10], color='#38bdf8', lw=3) # عكفة يسار
-        ax_l.plot([L_cm-cov, L_cm-cov], [cov, cov+10], color='#38bdf8', lw=3) # عكفة يمين
-        ax_l.text(L_cm/2, cov-8, f"{n_main} T {phi_main} (Main Bottom)", color='#38bdf8', ha='center', fontsize=9)
+    # رسم الخرسانة
+    ax_l.add_patch(patches.Rectangle((0, 0), L_cm, h, color='#334155', alpha=0.3))
+    
+    # رسم الحديد الرئيسي (يتغير مكانه بناء على نوع الجملة)
+    y_pos = (h - cov) if iron_location == "top" else cov
+    ax_l.plot([cov, L_cm-cov], [y_pos, y_pos], color='#38bdf8', lw=4)
+    # العكفات
+    hook_dir = -15 if iron_location == "top" else 15
+    ax_l.plot([cov, cov], [y_pos, y_pos + hook_dir], color='#38bdf8', lw=3)
+    ax_l.plot([L_cm-cov, L_cm-cov], [y_pos, y_pos + hook_dir], color='#38bdf8', lw=3)
+    ax_l.text(L_cm/2, y_pos + (10 if iron_location=="top" else -12), f"{n_main} T {phi_main} (Main {iron_location})", color='#38bdf8', ha='center', weight='bold')
 
-        # 2. الحديد العلوي (Top Support/Stirrup Hangers)
-        ax_l.plot([cov, L_cm-cov], [h-cov, h-cov], color='#94a3b8', lw=2)
-        ax_l.text(L_cm/2, h-cov+5, f"{n_top} T {phi_sec} (Top)", color='#94a3b8', ha='center', fontsize=9)
+    # رسم الحديد الثانوي
+    y_sec = cov if iron_location == "top" else (h - cov)
+    ax_l.plot([cov, L_cm-cov], [y_sec, y_sec], color='#94a3b8', lw=2)
+    ax_l.text(L_cm/2, y_sec + (8 if iron_location=="bottom" else -12), f"2 T 12 (Secondary)", color='#94a3b8', ha='center')
 
-        # 3. الحديد الإضافي (Extra Bars at Supports)
-        if n_extra > 0:
-            ax_l.plot([cov, L_cm*0.2], [h-cov-4, h-cov-4], color='#fbbf24', lw=2.5)
-            ax_l.text(L_cm*0.1, h-cov-12, f"{n_extra}T{phi_sec} Extra", color='#fbbf24', fontsize=8)
+    # رسم المساند توضيحياً
+    # مسند يسار
+    ax_l.plot([0, 0], [-10, h+10], color='white', lw=4 if "وثاقة" in left_support else 2)
+    # مسند يمين
+    if not is_cantilever:
+        ax_l.plot([L_cm, L_cm], [-10, h+10], color='white', lw=4 if "وثاقة" in right_support else 2)
 
-        # 4. الأساور (Stirrups)
-        s_spacing = 15 # كل 15 سم
-        for x_s in range(10, int(L_cm), s_spacing):
-            ax_l.plot([x_s, x_s], [cov, h-cov], color='#ef4444', lw=1, alpha=0.5)
-        ax_l.text(L_cm*0.8, 15, f"Stirrups T{stirrup_phi}@{s_spacing}cm", color='#ef4444', fontsize=8, rotation=90)
+    # الأساور
+    for x_s in range(10, int(L_cm), 20):
+        ax_l.plot([x_s, x_s], [cov, h-cov], color='#ef4444', lw=1, alpha=0.4)
 
-        ax_l.set_xlim(-20, L_cm+20)
-        ax_l.set_ylim(-20, h+30)
-        ax_l.axis('off')
-        fig_l.patch.set_facecolor('#0f172a')
-        st.pyplot(fig_l)
+    ax_l.set_xlim(-50, L_cm+50)
+    ax_l.set_ylim(-30, h+40)
+    ax_l.axis('off')
+    fig_l.patch.set_facecolor('#0f172a')
+    st.pyplot(fig_l)
 
-    with col2:
-        # --- رسم المقطع العرضي (Cross Section) ---
-        fig_c, ax_c = plt.subplots(figsize=(5, 7))
-        ax_c.set_aspect('equal')
-        
-        # الخرسانة والأساور
-        ax_c.add_patch(patches.Rectangle((0, 0), B, h, edgecolor='#e2e8f0', facecolor='#1e293b', lw=3))
-        ax_c.add_patch(patches.Rectangle((3, 3), B-6, h-6, edgecolor='#ef4444', facecolor='none', ls='--', lw=1.5))
-        
-        # رسم الحديد السفلي
-        space_b = (B-10)/(n_main-1) if n_main > 1 else 0
-        for i in range(n_main):
-            ax_c.add_patch(plt.Circle((5 + i*space_b, 6), phi_main/10, color='#38bdf8'))
-            
-        # رسم الحديد العلوي
-        space_t = (B-10)/(n_top-1)
-        for i in range(n_top):
-            ax_c.add_patch(plt.Circle((5 + i*space_t, h-6), phi_sec/10, color='#94a3b8'))
-            
-        ax_c.text(B/2, -8, f"SECTION B={B}cm, H={h}cm", color='white', ha='center', fontsize=10)
-        ax_c.set_xlim(-10, B+10)
-        ax_c.set_ylim(-15, h+15)
-        ax_c.axis('off')
-        fig_c.patch.set_facecolor('#0f172a')
-        st.pyplot(fig_c)
+with col2:
+    fig_c, ax_c = plt.subplots(figsize=(5, 7))
+    ax_c.set_aspect('equal')
+    ax_c.add_patch(patches.Rectangle((0, 0), B, h, edgecolor='white', facecolor='#1e293b', lw=3))
+    ax_c.add_patch(patches.Rectangle((3, 3), B-6, h-6, edgecolor='#ef4444', facecolor='none', ls='--'))
+    
+    # توزيع الحديد السفلي والعلوي في المقطع
+    main_y = h-6 if iron_location == "top" else 6
+    sec_y = 6 if iron_location == "top" else h-6
+    
+    space = (B-10)/(n_main-1) if n_main > 1 else 0
+    for i in range(n_main):
+        ax_c.add_patch(plt.Circle((5 + i*space, main_y), phi_main/10, color='#38bdf8'))
+    for i in range(2):
+        ax_c.add_patch(plt.Circle((5 + i*(B-10), sec_y), 1.2/2, color='#94a3b8'))
 
-with tab2:
-    st.subheader("📊 جدول تقدير الكميات")
-    total_conc = (B/100) * (h/100) * L
-    st.write(f"✅ حجم الخرسانة: `{total_conc:.2f} m³`")
-    st.write(f"✅ التسليح الرئيسي: `{n_main} T {phi_main}`")
-    st.write(f"✅ التسليح العلوي: `{n_top} T {phi_sec}`")
-    st.write(f"✅ الأساور: `T {stirrup_phi}` كل `{s_spacing} سم`")
+    ax_c.axis('off')
+    fig_c.patch.set_facecolor('#0f172a')
+    st.pyplot(fig_c)
 
-# 5. الختم الرسمي المحدث
+# 5. الختم الرسمي
 st.markdown(f"""
     <div class="footer-stamp">
         <h2 style="color: #38bdf8; margin:0;">المهندس المدني بيلان مصطفى عبدالكريم</h2>
         <p style="font-size: 1.2em; margin:5px 0;">دراسات - إشراف - تعهدات</p>
         <h3 style="color: #ffffff; letter-spacing: 2px;">0998449697</h3>
-        <p style="color: #64748b; font-size: 0.8em;">Pelan Structural Pro v22 | تم التصميم بواسطة المهندس بيلان © 2026</p>
+        <p style="color: #64748b;">Pelan Structural Pro v22 | © 2026</p>
     </div>
 """, unsafe_allow_html=True)
