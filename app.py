@@ -1,38 +1,34 @@
-function calculateSlab(Ly, Lx, mainDiameter, liveLoad, finishingLoad) {
-    // 1. تحديد نوع البلاطة واتجاه العمل
-    const ratio = Ly / Lx;
-    let type = (ratio > 2) ? "One-Way" : "Two-Way";
+import math
 
-    // 2. حساب السماكة الدنيا (h) لتجنب السهم (بفرض مستمرة من طرف واحد)
-    // h = L / 24 (حسب الكود السوري/الأمريكي للبلاطات باتجاه واحد)
-    let h_min = (Lx * 100) / 24; 
-    let h = Math.ceil(h_min); // تقريب لأقرب عدد صحيح
+# المدخلات (تأكد أن الأسماء تطابق المتغيرات في تطبيقك)
+Ly = 27.0  # طول البلاطة
+Lx = 2.0   # عرض البلاطة
+main_dia = 12 # قطر الحديد بالـ mm
 
-    // 3. حساب الحمولات (Kg/m2)
-    const concreteDensity = 2500;
-    const deadLoad = (h / 100) * concreteDensity + finishingLoad;
-    const ultimateLoad = 1.2 * deadLoad + 1.6 * liveLoad;
+# 1. حساب السماكة h (تلقائياً)
+# بفرض البلاطة مستمرة من طرف واحد (Lx/24)
+h_cm = math.ceil((Lx * 100) / 24) 
 
-    // 4. حساب العزوم (Moment) - لمنتصف المجاز (بسيط الاستناد كمثال)
-    // M = (w * L^2) / 8
-    const moment = (ultimateLoad * Math.pow(Lx, 2)) / 8;
+# 2. حساب الأحمال (قيم افتراضية يمكنك ربطها بمدخلات)
+dead_load = (h_cm / 100) * 2500 + 150  # وزن ذاتي + تغطية
+live_load = 200 
+wu = 1.2 * dead_load + 1.6 * live_load
 
-    // 5. حساب مساحة الحديد (As) والعدد (بفرض d = h - 2cm)
-    const d = h - 2.5; 
-    const fy = 4000; // إجهاد الخضوع للحديد
-    // معادلة تقريبية سريعة للمساحة
-    let As = moment / (0.9 * fy * 0.9 * d); 
-    
-    // حساب الوزن المتر الطولي للقطر المختار
-    const weightPerMeter = (Math.pow(mainDiameter, 2) / 162);
-    const numberOfBars = Math.ceil(As / (0.785 * Math.pow(mainDiameter/10, 2)));
+# 3. حساب العزوم والتسليح
+mu = (wu * (Lx**2)) / 8
+d = h_cm - 2.5 # الارتفاع الفعال
+# حساب مساحة الحديد المطلوبة (معادلة تقريبية سريعة)
+as_req = mu / (0.9 * 4000 * 0.9 * d) 
 
-    return {
-        slabType: type,
-        thickness: h,
-        totalDeadLoad: deadLoad.toFixed(2),
-        requiredBars: (numberOfBars < 5) ? 5 : numberOfBars, // الحد الأدنى 5 قضبان
-        concreteVolume: (Ly * Lx * (h / 100)).toFixed(2),
-        totalSteelWeight: (numberOfBars * Lx * weightPerMeter * Ly).toFixed(2)
-    };
-}
+# 4. حساب عدد القضبان ووزن الحديد
+bar_area = (math.pi * (main_dia/10)**2) / 4
+num_bars = math.ceil(as_req / bar_area)
+if num_bars < 5: num_bars = 5 # الحد الأدنى للكود
+
+weight_per_m = (main_dia**2) / 162
+total_weight = num_bars * Lx * weight_per_m * Ly
+
+# --- العرض على التطبيق ---
+print(f"السماكة المقترحة: {h_cm} cm")
+print(f"الحديد السفلي: {num_bars} T {main_dia} / m'")
+print(f"إجمالي وزن الحديد: {total_weight:.2f} kg")
