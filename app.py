@@ -1,84 +1,110 @@
 import streamlit as st
 import math
 import matplotlib.pyplot as plt
+import pandas as pd
 
-# إعدادات الواجهة والختم المهني (Personalized with your info)
-st.set_page_config(page_title="مكتب المهندس بيلان", layout="wide")
-st.title("البرنامج الذكي لتسليح البلاطات والكميات 🏗️")
+# --- إعدادات الهوية البصرية ---
+st.set_page_config(page_title="مكتب المهندس بيلان - نظام التصميم الإنشائي", layout="wide")
 
-# --- مدخلات المهندس ---
+# تصميم ترويسة احترافية
+st.markdown(f"""
+    <div style="background-color:#1E1E1E;padding:20px;border-radius:10px;border-left: 8px solid #FF4B4B;">
+        <h1 style="color:white;margin:0;">نظام تصميم وحساب كميات البلاطات المصمتة</h1>
+        <p style="color:#DDDDDD;">إعداد المهندس المدني: <b>بيلان مصطفى عبدالكريم</b> | دراسات - إشراف - تعهدات</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- مدخلات المشروع ---
 with st.sidebar:
-    st.header("إدخال المعطيات")
-    Ly = st.number_input("طول البلاطة Ly (m)", value=27.0)
-    Lx = st.number_input("عرض البلاطة Lx (m)", value=2.0)
-    h_input = st.number_input("سماكة البلاطة المدخلة h (cm)", value=12)
-    mesh_type = st.radio("نظام التسليح:", ("شبكة واحدة + برانيط", "شبكتين كاملتين"))
+    st.header("📋 معطيات المشروع")
+    project_name = st.text_input("اسم المشروع", "فيلا سكنية")
+    Ly = st.number_input("الطول الكلي Ly (m)", value=27.0, step=0.5)
+    Lx = st.number_input("العرض الصافي Lx (m)", value=2.0, step=0.1)
+    h_cm = st.number_input("السماكة المختارة h (cm)", value=12)
+    
+    st.divider()
+    st.header("🏗️ خيارات التسليح")
+    mesh_type = st.radio("نظام التسليح المطلوبة:", ("شبكة واحدة + برانيط", "شبكتين كاملتين"))
+    f_y = st.number_input("إجهاد خضوع الحديد (kg/cm²)", value=4000)
     live_load = st.number_input("الحمولة الحية (kg/m²)", value=200)
 
-# --- الحسابات الإنشائية التلقائية ---
-# 1. حساب الأحمال (Wu)
-dead_load = (h_input/100) * 2500 + 150 
-wu = 1.2 * dead_load + 1.6 * live_load
+# --- المحرك الحسابي (Structural Engine) ---
+# 1. تحليل الأحمال
+sw = (h_input / 100) * 2500 if 'h_input' in locals() else (h_cm/100)*2500
+wu = 1.2 * (sw + 150) + 1.6 * live_load
 mu = (wu * (Lx**2)) / 8
-d = h_input - 2.5 
+d = h_cm - 2.5
 
-# 2. حساب مساحة الحديد واختيار القطر (تلقائياً)
-as_req = mu / (0.9 * 4000 * 0.9 * d) 
-available_diameters = [8, 10, 12, 14, 16]
-chosen_dia = 10
-chosen_num = 5
-
-for dia in available_diameters:
-    area_one_bar = (math.pi * (dia/10)**2) / 4
-    num = math.ceil(as_req / area_one_bar)
+# 2. اختيار القطر والعدد تلقائياً
+as_req = mu / (0.9 * f_y * 0.9 * d)
+diameters = [8, 10, 12, 14, 16]
+chosen_dia, chosen_num = 10, 5
+for dia in diameters:
+    area = (math.pi * (dia/10)**2) / 4
+    num = math.ceil(as_req / area)
     if 5 <= num <= 10:
-        chosen_dia = dia
-        chosen_num = num
+        chosen_dia, chosen_num = dia, num
         break
 
-# 3. منطق حساب الأوزان بناءً على نوع الشبكة
+# 3. حساب الأطوال والكميات بدقة
+bar_length = Lx + 0.20 # إضافة العكفات
 weight_per_m = (chosen_dia**2 / 162)
-dist_weight = (8**2 / 162) * 5 # وزن حديد التوزيع (5T8)
+dist_weight_m = (8**2 / 162) * 5 # حديد توزيع ثابت 5T8
 
 if mesh_type == "شبكة واحدة + برانيط":
-    # سفلي كامل + علوي جزئي (برانيط 25% من البحر) + توزيع سفلي
-    total_weight_per_m2 = (chosen_num * weight_per_m) + (chosen_num * weight_per_m * 0.5) + dist_weight
-    top_label = f"برانيط: {chosen_num} Φ {chosen_dia} / m'"
-    multiplier = 1.05 # زيادة 5% فضلات
+    total_steel_m2 = (chosen_num * weight_per_m * bar_length) + (chosen_num * weight_per_m * (Lx/3)) + (dist_weight_m * Lx)
+    markup = 1.07 # 7% فضلات وتداخل
 else:
-    # سفلي كامل + علوي كامل + توزيع سفلي + توزيع علوي + كراسي
-    total_weight_per_m2 = (chosen_num * weight_per_m * 2) + (dist_weight * 2)
-    top_label = f"شبكة علوية: {chosen_num} Φ {chosen_dia} / m'"
-    multiplier = 1.15 # زيادة 15% (كراسي + فضلات + تربيط)
+    total_steel_m2 = (chosen_num * weight_per_m * bar_length * 2) + (dist_weight_m * Lx * 2)
+    markup = 1.15 # 15% كراسي وفضلات
 
-total_steel_kg = total_weight_per_m2 * Lx * Ly * multiplier
+total_weight_kg = total_steel_m2 * Ly * markup
+total_concrete = Lx * Ly * (h_cm/100)
 
-# --- الرسم الإنشائي ---
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.add_patch(plt.Rectangle((0, 0), 10, h_input/2, color='lightgrey', alpha=0.3))
-# السفلي
-ax.plot([0.2, 9.8], [1, 1], color='red', linewidth=3, label='Main Bottom')
+# --- عرض النتائج ---
+st.write("##")
+col_res1, col_res2 = st.columns([2, 1])
 
-if mesh_type == "شبكة واحدة + برانيط":
-    ax.plot([0.2, 2.5], [h_input/2 - 1, h_input/2 - 1], color='blue', linewidth=2.5)
-    ax.plot([7.5, 9.8], [h_input/2 - 1, h_input/2 - 1], color='blue', linewidth=2.5, label='Top Bars')
+with col_res1:
+    st.subheader("📊 تفاصيل التسليح المحسوبة")
+    res_df = pd.DataFrame({
+        "النوع": ["الحديد الرئيسي (سفلي)", "الحديد العلوي", "حديد التوزيع", "الخرسانة"],
+        "الوصف": [f"{chosen_num} Φ {chosen_dia} / m'", 
+                  f"{chosen_num} Φ {chosen_dia} / m'" if mesh_type == "شبكتين كاملتين" else "برانيط عند المساند",
+                  "5 Φ 8 / m'", "بيتون مسلح عيار 350"],
+        "الطول التقديري": [f"{bar_length:.2f} m", "-", f"{Ly:.2f} m", "-"]
+    })
+    st.table(res_df)
+
+with col_res2:
+    st.subheader("💰 جدول الكميات (BOQ)")
+    st.metric("إجمالي الحديد", f"{total_weight_kg:.0f} KG")
+    st.metric("إجمالي الخرسانة", f"{total_concrete:.2f} M³")
+
+# --- الرسم الهندسي المطور ---
+
+
+fig, ax = plt.subplots(figsize=(10, 3))
+ax.add_patch(plt.Rectangle((0, 0), 10, h_cm/2, color='#E0E0E0', ec='black'))
+# رسم الأسياخ
+ax.plot([0.1, 9.9], [0.8, 0.8], color='#C0392B', lw=3, label='Bottom') # سفلي
+if mesh_type == "شبكتين كاملتين":
+    ax.plot([0.1, 9.9], [h_cm/2-0.8, h_cm/2-0.8], color='#2980B9', lw=3) # علوي كامل
 else:
-    ax.plot([0.2, 9.8], [h_input/2 - 1, h_input/2 - 1], color='blue', linewidth=2.5, label='Full Top Mesh')
+    ax.plot([0.1, 2.5], [h_cm/2-0.8, h_cm/2-0.8], color='#2980B9', lw=3) # برانيط
+    ax.plot([7.5, 9.9], [h_cm/2-0.8, h_cm/2-0.8], color='#2980B9', lw=3)
 
-ax.set_ylim(-1, h_input/2 + 2)
 ax.axis('off')
 st.pyplot(fig)
 
-# --- عرض النتائج النهائية والختم ---
-st.subheader("النتائج النهائية للكميات:")
-col1, col2, col3 = st.columns(3)
-col1.metric("الحديد السفلي (حسابي)", f"{chosen_num} Φ {chosen_dia}")
-col2.metric("الحديد العلوي", top_label)
-col3.metric("حديد التوزيع", "5 Φ 8")
-
-st.divider()
-res1, res2 = st.columns(2)
-res1.success(f"📦 حجم الخرسانة: {(Lx * Ly * h_input/100):.2f} m³")
-res2.error(f"⚖️ إجمالي وزن الحديد (+الزيادة): {total_steel_kg:.1f} kg")
-
-st.markdown(f"<br><hr><center><b>المهندس المدني بيلان مصطفى عبدالكريم</b><br>دراسات - اشراف - تعهدات<br><b>0998449697</b></center>", unsafe_allow_html=True)
+# --- تذييل البرنامج (الختم المهني) ---
+st.markdown("---")
+col_f1, col_f2 = st.columns(2)
+with col_f1:
+    st.markdown(f"**المهندس المدني:** بيلان مصطفى عبدالكريم")
+    st.markdown(f"📞 **للتواصل:** 0998449697")
+with col_f2:
+    st.markdown(f"📍 **الاختصاص:** دراسات - إشراف - تعهدات")
+    if st.button("طباعة التقرير الفني 📄"):
+        st.balloons()
+        st.success("تم تجهيز التقرير للطباعة")
