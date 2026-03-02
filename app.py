@@ -1,105 +1,105 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-# إعداد الهوية البصرية والختم
-st.set_page_config(page_title="Pro-Civil Syria | Eng. Pelan", layout="wide")
+# إعداد الصفحة الاحترافي
+st.set_page_config(page_title="المنظومة الإنشائية - م. بيلان", layout="wide")
 
-def main():
-    # الترويسة بختم المهندس بيلان
-    st.markdown(f"""
-    <div style="text-align: center; border: 2px solid #2e7d32; padding: 10px; border-radius: 10px;">
-        <h1 style="color: #2e7d32;">المنظومة الهندسية للتصميم الإنشائي</h1>
-        <h3>المهندس المدني بيلان مصطفى عبدالكريم</h3>
-        <p>دراسات - إشراف - تعهدات | <b>0998449697</b></p>
+# الختم الرسمي في أعلى البرنامج
+st.markdown(f"""
+    <div style="direction: rtl; text-align: right; border: 3px solid #2e7d32; padding: 15px; border-radius: 15px; background-color: #f1f8e9;">
+        <h1 style="color: #1b5e20; margin:0;">المنظومة الهندسية المتكاملة للتصميم الإنشائي</h1>
+        <h2 style="color: #2e7d32; margin:0;">المهندس المدني بيلان مصطفى عبدالكريم</h2>
+        <p style="font-size: 18px; margin:5px;">دراسات - إشراف - تعهدات | <b>هاتف: 0998449697</b></p>
     </div>
-    """, unsafe_allow_input=True)
+""", unsafe_allow_html=True)
 
-    st.sidebar.header("⚙️ إعدادات الكود والمواد")
+st.divider()
+
+# القائمة الجانبية للمواد (كافة أنواع الحديد والبيتون)
+st.sidebar.header("🛠️ مواصفات المواد (المواد)")
+fcu = st.sidebar.select_slider("مقاومة الخرسانة fcu (MPa)", options=[20, 25, 30, 35, 40], value=25)
+fy = st.sidebar.selectbox("إجهاد خضوع الحديد fy (MPa)", options=[240, 360, 400], index=2, help="240 للحديد الأملس، 400 للمجدول عالي المقاومة")
+f_prime_c = 0.8 * fcu # تحويل الكود السوري
+
+# اختيار العنصر الإنشائي
+choice = st.sidebar.radio("اختر العنصر للتصميم:", ["البلاطات المسمطة", "الجوائز (Beams)", "الأعمدة", "الأساسات المنفردة"])
+
+# --- 1. تصميم البلاطات والجوائز مع الرسم الدقيق ---
+if choice in ["البلاطات المسمطة", "الجوائز (Beams)"]:
+    st.header(f"💠 تصميم {choice}")
+    col1, col2 = st.columns([1, 1.5])
     
-    # اختيار نوع الحديد وإجهاد الخرسانة
-    fy = st.sidebar.selectbox("نوع حديد التسليح (fy MPa)", [240, 360, 400], index=2)
-    fcu = st.sidebar.slider("المقاومة المكعبة للخرسانة fcu (MPa)", 20, 40, 25)
-    f_prime_c = 0.8 * fcu # تحويل الكود السوري
-
-    menu = ["تصميم البلاطات", "تصميم الجوائز", "تصميم الأعمدة", "تصميم الأساسات"]
-    choice = st.sidebar.radio("اختر العنصر الإنشائي:", menu)
-
-    if choice == "تصميم البلاطات":
-        st.header("📏 تصميم البلاطات المسمطة (Solid Slab)")
-        col1, col2 = st.columns(2)
+    with col1:
+        L = st.number_input("طول المجاز الفعال (m)", value=4.5)
+        b = st.number_input("عرض المقطع b (mm)", value=1000 if choice == "البلاطات المسمطة" else 300)
+        h = st.number_input("الارتفاع الكلي h (mm)", value=150 if choice == "البلاطات المسمطة" else 500)
         
-        with col1:
-            L = st.number_input("طول المجاز الفعال L (m)", value=4.0)
-            H = st.number_input("سماكة البلاطة الكلية H (cm)", value=15)
-            # مدخلات المهندس بيلان
-            DL = st.number_input("الحمولة الميتة (G) kN/m2", value=2.5)
-            LL = st.number_input("الحمولة الحية (P) kN/m2", value=3.0)
+        # أحمال المهندس بيلان
+        st.subheader("📥 الأحمال")
+        dl = st.number_input("الحمولة الميتة (kN/m² or kN/m)", value=2.5)
+        ll = st.number_input("الحمولة الحية (kN/m² or kN/m)", value=3.0 if choice == "البلاطات المسمطة" else 10.0)
         
-        # الحسابات التصميمية
-        Wu = (1.4 * DL) + (1.7 * LL)
-        Mu = (Wu * L**2) / 10 # عزم تقريبي للكود السوري
-        d = (H * 10) - 20 # الارتفاع الفعال
+        wu = (1.4 * dl) + (1.7 * ll)
+        mu = (wu * L**2) / 8 # عزم بسيط (بفرض الحالة الأسوأ)
+        d = h - 25 # الارتفاع الفعال
         
-        # حساب التسليح السفلي بدقة
-        Rn = (Mu * 1e6) / (0.9 * 1000 * d**2)
+    with col2:
+        # محرك التصميم وفق جامعة دمشق
+        rn = (mu * 1e6) / (0.9 * b * d**2)
         m = fy / (0.85 * f_prime_c)
-        rho = (1/m) * (1 - np.sqrt(max(0, 1 - (2*m*Rn/fy))))
-        As_req = rho * 1000 * d
-        As_min = max(0.25 * np.sqrt(f_prime_c) / fy * 1000 * d, 1.4 / fy * 1000 * d)
-        As_final = max(As_req, As_min)
+        rho = (1/m) * (1 - np.sqrt(max(0, 1 - (2*m*rn/fy))))
+        as_req = rho * b * d
+        as_min = max(0.25 * np.sqrt(f_prime_c) / fy * b * d, 1.4 / fy * b * d)
+        as_final = max(as_req, as_min)
         
-        with col2:
-            st.subheader("📊 النتائج الإنشائية")
-            st.info(f"الحمولة التصعيدية Wu = {Wu:.2f} kN/m2")
-            st.success(f"التسليح السفلي المطلوب As = {As_final:.2f} mm2/m")
-            
-            # اختيار قطر السيخ للرسم التوضيحي
-            bar_dia = st.selectbox("اختر قطر السيخ (mm)", [8, 10, 12, 14])
-            as_bar = (np.pi * bar_dia**2) / 4
-            count = np.ceil(As_final / as_bar)
-            st.write(f"النتيجة: **{int(count)} T{bar_dia} / m'**")
-
-            # الرسم التوضيحي للمقطع
-            fig = go.Figure()
-            fig.add_shape(type="rect", x0=0, y0=0, x1=100, y1=H, line=dict(color="black"), fillcolor="lightgrey")
-            for i in range(int(count)):
-                fig.add_shape(type="circle", x0=(i*100/count), y0=2, x1=(i*100/count)+2, y1=4, fillcolor="blue")
-            fig.update_layout(title="رسم توضيحي لمقطع البلاطة والتسليح السفلي", width=400, height=200)
-            st.plotly_chart(fig)
-
-    elif choice == "تصميم الأعمدة":
-        st.header("🏛️ تصميم الأعمدة المركزية (Columns)")
-        Pu = st.number_input("الحمولة التصعيدية Pu (kN)", value=2000)
-        B = st.number_input("عرض العمود B (mm)", value=300)
-        H_col = st.number_input("عمق العمود H (mm)", value=500)
+        st.subheader("📊 النتائج الإنشائية")
+        st.success(f"التسليح السفلي المطلوب: {as_final:.2f} mm²")
         
-        Ag = B * H_col
-        # معادلة الكود السوري للأعمدة المطرقة (1% حديد)
-        Ast_min = 0.01 * Ag
-        Pn_max = 0.65 * 0.8 * (0.85 * f_prime_c * (Ag - Ast_min) + fy * Ast_min) / 1000
+        # اختيار الأقطار
+        dia = st.selectbox("اختر قطر القضيب (mm)", [8, 10, 12, 14, 16, 18, 20])
+        n_bars = np.ceil(as_final / (np.pi * dia**2 / 4))
+        st.info(f"النتيجة: **{int(n_bars)} T{dia}** {'لكل متر' if choice == 'البلاطات المسمطة' else 'للمقطع'}")
+
+        # الرسم التوضيحي الدقيق (Section Sketch)
+        fig = go.Figure()
+        fig.add_shape(type="rect", x0=0, y0=0, x1=b, y1=h, line=dict(color="black", width=3), fillcolor="rgba(128,128,128,0.2)")
+        # رسم التسليح السفلي
+        for i in range(int(n_bars)):
+            x_pos = (b / (n_bars + 1)) * (i + 1)
+            fig.add_shape(type="circle", x0=x_pos-dia/2, y0=20, x1=x_pos+dia/2, y1=20+dia, fillcolor="red", line_color="black")
         
-        if Pu > Pn_max:
-            Ast_req = ((Pu*1000 / (0.65*0.8)) - (0.85*f_prime_c*Ag)) / (fy - 0.85*f_prime_c)
-            st.error(f"المقطع يحتاج تسليح إضافي: As = {Ast_req:.2f} mm2")
-        else:
-            st.success(f"المقطع آمن بالحد الأدنى (1%): As = {Ast_min:.2f} mm2")
+        fig.update_layout(title="الرسم التوضيحي لمقطع العنصر والتسليح", xaxis_visible=False, yaxis_visible=False, height=300, width=500)
+        st.plotly_chart(fig)
 
-    elif choice == "تصميم الأساسات":
-        st.header("🧱 تصميم الأساسات المنفردة (Isolated Footing)")
-        P_service = st.number_input("الحمولة التشغيلية (kN)", value=1200)
-        q_allow = st.number_input("تحمل التربة المسموح (kN/m2)", value=150)
-        
-        Area = (P_service * 1.1) / q_allow
-        Side = np.sqrt(Area)
-        st.success(f"أبعاد الأساس المقترحة: {Side:.2f} x {Side:.2f} m")
-        st.warning("يتم التحقق من القص الثاقب (Punching) تلقائياً لضمان سماكة اقتصادية.")
+# --- 2. تصميم الأعمدة ---
+elif choice == "الأعمدة":
+    st.header("🏛️ تصميم الأعمدة المركزية")
+    pu = st.number_input("الحمولة التصعيدية Pu (kN)", value=2000)
+    col_b = st.number_input("عرض العمود B (mm)", value=300)
+    col_h = st.number_input("عمق العمود H (mm)", value=500)
+    
+    ag = col_b * col_h
+    # نسبة 1% حديد - اقتصادية الكود السوري
+    ast_min = 0.01 * ag
+    pn_max = 0.65 * 0.8 * (0.85 * f_prime_c * (ag - ast_min) + fy * ast_min) / 1000
+    
+    if pu > pn_max:
+        st.error(f"❌ المقطع يحتاج لزيادة أبعاد أو تسليح إضافي. القدرة الحالية: {pn_max:.2f} kN")
+    else:
+        st.success(f"✅ المقطع آمن واقتصادي. التسليح الكلي: {ast_min:.2f} mm²")
+        st.info(f"الاقتراح: {int(np.ceil(ast_min/201))} T16 قضبان طولية")
 
-    st.divider()
-    if st.button("إصدار تقرير فني بختم المكتب"):
-        st.balloons()
-        st.write(f"تم اعتماد الدراسة الفنية بواسطة: {self.stamp_text}")
+# --- 3. تصميم الأساسات ---
+elif choice == "الأساسات المنفردة":
+    st.header("🧱 تصميم الأساسات المنفردة")
+    p_service = st.number_input("الحمولة التشغيلية P (kN)", value=1200)
+    q_allow = st.number_input("تحمل التربة q (kN/m²)", value=150)
+    
+    area = (p_service * 1.1) / q_allow
+    side = np.sqrt(area)
+    st.success(f"أبعاد الأساس المقترحة: {side:.2f} x {side:.2f} m")
+    st.caption("تم حساب الأبعاد مع اعتبار وزن الردم والوزن الذاتي للأساس.")
 
-if __name__ == "__main__":
-    main()
+st.divider()
+st.write(f"©️ تم التطوير بواسطة: {st.session_state.get('name', 'المهندس بيلان مصطفى عبدالكريم')}")
