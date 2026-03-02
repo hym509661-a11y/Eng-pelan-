@@ -1,110 +1,104 @@
 import streamlit as st
 import math
-import matplotlib.pyplot as plt
 import pandas as pd
+import ezdxf  # مكتبة الأوتوكاد (pip install ezdxf)
 
-# --- إعدادات الهوية البصرية ---
-st.set_page_config(page_title="مكتب المهندس بيلان - نظام التصميم الإنشائي", layout="wide")
-
-# تصميم ترويسة احترافية
+# --- الهوية المهنية (المهندس بيلان) ---
+st.set_page_config(page_title="Eng. Pelan - Structural Pro", layout="wide")
 st.markdown(f"""
-    <div style="background-color:#1E1E1E;padding:20px;border-radius:10px;border-left: 8px solid #FF4B4B;">
-        <h1 style="color:white;margin:0;">نظام تصميم وحساب كميات البلاطات المصمتة</h1>
-        <p style="color:#DDDDDD;">إعداد المهندس المدني: <b>بيلان مصطفى عبدالكريم</b> | دراسات - إشراف - تعهدات</p>
+    <div style="background-color:#2c3e50; padding:20px; border-radius:10px; border-right: 10px solid #e74c3c; text-align:right;">
+        <h1 style="color:white; margin:0;">المنظومة الهندسية المتكاملة للتصميم والكميات</h1>
+        <p style="color:#ecf0f1;"><b>المهندس المدني بيلان مصطفى عبدالكريم | 0998449697</b></p>
+        <p style="color:#bdc3c7; font-size:14px;">تصميم - إشراف - تنفيذ | 2026</p>
     </div>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- مدخلات المشروع ---
-with st.sidebar:
-    st.header("📋 معطيات المشروع")
-    project_name = st.text_input("اسم المشروع", "فيلا سكنية")
-    Ly = st.number_input("الطول الكلي Ly (m)", value=27.0, step=0.5)
-    Lx = st.number_input("العرض الصافي Lx (m)", value=2.0, step=0.1)
-    h_cm = st.number_input("السماكة المختارة h (cm)", value=12)
+# --- القائمة الجانبية للمدخلات ---
+element = st.sidebar.selectbox("🎯 اختر العنصر الإنشائي:", ("بلاطة مصمتة (Slab)", "جائز مسلح (Beam)"))
+
+def calculate_steel(as_req):
+    """محرك اختيار القطر والعدد تلقائياً"""
+    for dia in [10, 12, 14, 16]:
+        area = (math.pi * (dia/10)**2) / 4
+        num = math.ceil(as_req / area)
+        if 5 <= num <= 10: return dia, num
+    return 16, math.ceil(as_req / 2.01)
+
+# --- 1. قسم البلاطات (Slabs) ---
+if element == "بلاطة مصمتة (Slab)":
+    with st.sidebar:
+        Ly = st.number_input("الطول Ly (m)", value=27.0)
+        Lx = st.number_input("العرض Lx (m)", value=2.0)
+        h = st.number_input("السماكة h (cm)", value=12)
+        mesh = st.radio("نظام التسليح:", ("شبكة واحدة + برانيط", "شبكتين كاملتين"))
     
-    st.divider()
-    st.header("🏗️ خيارات التسليح")
-    mesh_type = st.radio("نظام التسليح المطلوبة:", ("شبكة واحدة + برانيط", "شبكتين كاملتين"))
-    f_y = st.number_input("إجهاد خضوع الحديد (kg/cm²)", value=4000)
-    live_load = st.number_input("الحمولة الحية (kg/m²)", value=200)
+    # الحسابات الإنشائية
+    wu = 1.2 * ((h/100)*2500 + 150) + 1.6 * 200
+    mu = (wu * Lx**2) / 8
+    as_req = mu / (0.9 * 4000 * 0.9 * (h-2.5))
+    dia, num = calculate_steel(as_req)
+    
+    # حساب الكميات وتفريد الحديد
+    bar_len = Lx + 0.30 # طول السيخ مع العكفات
+    total_m = num * bar_len * Ly
+    unit_w = (dia**2 / 162)
+    base_weight = total_m * unit_w
+    
+    if mesh == "شبكتين كاملتين":
+        final_weight = base_weight * 2.2 # ضعف الحديد + 20% كراسي وفضلات
+        top_desc = f"شبكة علوية كاملة {num}Φ{dia}/m"
+    else:
+        final_weight = base_weight * 1.3 # سفلي + برانيط + 10% فضلات
+        top_desc = f"برانيط علوية {num}Φ{dia}/m"
 
-# --- المحرك الحسابي (Structural Engine) ---
-# 1. تحليل الأحمال
-sw = (h_input / 100) * 2500 if 'h_input' in locals() else (h_cm/100)*2500
-wu = 1.2 * (sw + 150) + 1.6 * live_load
-mu = (wu * (Lx**2)) / 8
-d = h_cm - 2.5
+    st.subheader("✅ نتائج التصميم وجدولة الكميات (BBS)")
+    
+    # عرض النتائج في بطاقات
+    c1, c2, c3 = st.columns(3)
+    c1.metric("التسليح السفلي", f"{num} Φ {dia} / m'")
+    c2.metric("حجم البيتون الكلي", f"{Lx*Ly*h/100:.2f} m³")
+    c3.metric("إجمالي وزن الحديد", f"{final_weight:.1f} kg")
 
-# 2. اختيار القطر والعدد تلقائياً
-as_req = mu / (0.9 * f_y * 0.9 * d)
-diameters = [8, 10, 12, 14, 16]
-chosen_dia, chosen_num = 10, 5
-for dia in diameters:
-    area = (math.pi * (dia/10)**2) / 4
-    num = math.ceil(as_req / area)
-    if 5 <= num <= 10:
-        chosen_dia, chosen_num = dia, num
-        break
+    # جدول تفريد الحديد (BBS)
+    st.write("### 📋 جدول تفريد الحديد (Bar Bending Schedule)")
+    bbs_data = {
+        "العنصر": ["حديد سفلي رئيسي", "حديد علوي (برانيط/شبكة)", "حديد توزيع (تعليق)"],
+        "القطر (mm)": [dia, dia, 8],
+        "الشكل": ["L-Shape", "L-Shape", "Straight"],
+        "الطول الإجمالي (m)": [f"{bar_len:.2f}", f"{bar_len:.2f}" if mesh=="شبكتين كاملتين" else f"{Lx/3:.2f}", Ly],
+        "الوزن الكلي (kg)": [f"{base_weight:.1f}", f"{base_weight if mesh=='شبكتين كاملتين' else base_weight*0.3:.1f}", f"{(8**2/162)*5*Lx*Ly:.1f}"]
+    }
+    st.table(pd.DataFrame(bbs_data))
 
-# 3. حساب الأطوال والكميات بدقة
-bar_length = Lx + 0.20 # إضافة العكفات
-weight_per_m = (chosen_dia**2 / 162)
-dist_weight_m = (8**2 / 162) * 5 # حديد توزيع ثابت 5T8
+# --- 2. محرك رسم DXF للأوتوكاد ---
+st.divider()
+if st.button("🚀 تصدير المخطط التفصيلي إلى AutoCAD (DXF)"):
+    doc = ezdxf.new('R2010')
+    msp = doc.modelspace()
+    
+    # رسم حدود المقطع العرضي
+    p_h = h # الارتفاع
+    p_w = Lx * 100 # العرض بالسم
+    msp.add_lwpolyline([(0,0), (p_w, 0), (p_w, p_h), (0, p_h), (0,0)], dxfattribs={'color': 7})
+    
+    # رسم أسياخ الحديد
+    msp.add_line((5, 3), (p_w-5, 3), dxfattribs={'color': 1, 'lineweight': 35}) # سفلي
+    msp.add_text(f"Bottom: {num}T{dia}/m").set_placement((p_w/2, -10))
+    
+    # إضافة الختم المهني بيلان
+    footer_text = f"Designed by Eng. Pelan - 0998449697"
+    msp.add_text(footer_text).set_placement((0, -25))
+    
+    filename = "Pelan_Slab_Design.dxf"
+    doc.saveas(filename)
+    with open(filename, "rb") as f:
+        st.download_button("📥 تحميل ملف الأوتوكاد الآن", f, file_name=filename)
 
-if mesh_type == "شبكة واحدة + برانيط":
-    total_steel_m2 = (chosen_num * weight_per_m * bar_length) + (chosen_num * weight_per_m * (Lx/3)) + (dist_weight_m * Lx)
-    markup = 1.07 # 7% فضلات وتداخل
-else:
-    total_steel_m2 = (chosen_num * weight_per_m * bar_length * 2) + (dist_weight_m * Lx * 2)
-    markup = 1.15 # 15% كراسي وفضلات
-
-total_weight_kg = total_steel_m2 * Ly * markup
-total_concrete = Lx * Ly * (h_cm/100)
-
-# --- عرض النتائج ---
-st.write("##")
-col_res1, col_res2 = st.columns([2, 1])
-
-with col_res1:
-    st.subheader("📊 تفاصيل التسليح المحسوبة")
-    res_df = pd.DataFrame({
-        "النوع": ["الحديد الرئيسي (سفلي)", "الحديد العلوي", "حديد التوزيع", "الخرسانة"],
-        "الوصف": [f"{chosen_num} Φ {chosen_dia} / m'", 
-                  f"{chosen_num} Φ {chosen_dia} / m'" if mesh_type == "شبكتين كاملتين" else "برانيط عند المساند",
-                  "5 Φ 8 / m'", "بيتون مسلح عيار 350"],
-        "الطول التقديري": [f"{bar_length:.2f} m", "-", f"{Ly:.2f} m", "-"]
-    })
-    st.table(res_df)
-
-with col_res2:
-    st.subheader("💰 جدول الكميات (BOQ)")
-    st.metric("إجمالي الحديد", f"{total_weight_kg:.0f} KG")
-    st.metric("إجمالي الخرسانة", f"{total_concrete:.2f} M³")
-
-# --- الرسم الهندسي المطور ---
-
-
-fig, ax = plt.subplots(figsize=(10, 3))
-ax.add_patch(plt.Rectangle((0, 0), 10, h_cm/2, color='#E0E0E0', ec='black'))
-# رسم الأسياخ
-ax.plot([0.1, 9.9], [0.8, 0.8], color='#C0392B', lw=3, label='Bottom') # سفلي
-if mesh_type == "شبكتين كاملتين":
-    ax.plot([0.1, 9.9], [h_cm/2-0.8, h_cm/2-0.8], color='#2980B9', lw=3) # علوي كامل
-else:
-    ax.plot([0.1, 2.5], [h_cm/2-0.8, h_cm/2-0.8], color='#2980B9', lw=3) # برانيط
-    ax.plot([7.5, 9.9], [h_cm/2-0.8, h_cm/2-0.8], color='#2980B9', lw=3)
-
-ax.axis('off')
-st.pyplot(fig)
-
-# --- تذييل البرنامج (الختم المهني) ---
+# --- الختم المهني النهائي ---
 st.markdown("---")
-col_f1, col_f2 = st.columns(2)
-with col_f1:
-    st.markdown(f"**المهندس المدني:** بيلان مصطفى عبدالكريم")
-    st.markdown(f"📞 **للتواصل:** 0998449697")
-with col_f2:
-    st.markdown(f"📍 **الاختصاص:** دراسات - إشراف - تعهدات")
-    if st.button("طباعة التقرير الفني 📄"):
-        st.balloons()
-        st.success("تم تجهيز التقرير للطباعة")
+st.markdown(f"""
+    <div style="text-align:center;">
+        <p style="font-size:18px;">المهندس المدني <b>بيلان مصطفى عبدالكريم</b></p>
+        <p>دراسات - إشراف - تعهدات | <b>0998449697</b></p>
+    </div>
+""", unsafe_allow_html=True)
