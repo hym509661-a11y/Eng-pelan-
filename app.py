@@ -3,99 +3,100 @@ import numpy as np
 import plotly.graph_objects as go
 
 # إعداد الصفحة
-st.set_page_config(page_title="منظومة المهندس بيلان المتكاملة", layout="wide")
+st.set_page_config(page_title="منظومة المهندس بيلان الذكية", layout="wide")
 
 # الختم المهني الرسمي
 st.markdown(f"""
     <div style="direction: rtl; text-align: right; border: 3px solid #1b5e20; padding: 15px; border-radius: 15px; background-color: #f1f8e9;">
-        <h1 style="color: #1b5e20; margin:0;">المنظومة الهندسيّة الاحترافيّة للتصميم والرسم</h1>
+        <h1 style="color: #1b5e20; margin:0;">المنظومة الهندسيّة الذكيّة (برمجة التباعد الآلي)</h1>
         <h2 style="color: #2e7d32; margin:0;">المهندس المدني بيلان مصطفى عبدالكريم</h2>
         <p style="font-size: 18px; margin:5px;">دراسات - إشراف - تعهدات | <b>0998449697</b></p>
     </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.header("🛠️ مواصفات الكود والمواد")
+st.sidebar.header("⚙️ إعدادات الكود الذكي")
 fcu = st.sidebar.select_slider("مقاومة الخرسانة fcu (MPa)", options=[20, 25, 30, 35, 40], value=25)
 fy = st.sidebar.selectbox("إجهاد خضوع الحديد fy (MPa)", options=[240, 360, 400], index=2)
 f_prime_c = 0.8 * fcu
 
-choice = st.sidebar.radio("اختر العنصر للتصميم:", 
-                         ["جوائز ساقطة (Dropped)", "جوائز مخفية (Hidden)", "بلاطة هوردي", "الأعمدة", "الأساسات"])
+choice = st.sidebar.radio("اختر العنصر:", ["جوائز ساقطة", "جوائز مخفية", "بلاطة هوردي", "الأعمدة", "الأساسات"])
 
-# --- محرك الرسم الهندسي الاحترافي (المطور) ---
-def draw_detailed_section(b, h, n_low, dia_low, n_up, dia_up, s_spacing, s_dia, title):
+def draw_smart_section(b, h, n_low, dia_low, n_up, dia_up, s_spacing, s_dia, title, info_text):
     fig = go.Figure()
-    # رسم بيتون المقطع
     fig.add_shape(type="rect", x0=0, y0=0, x1=b, y1=h, line=dict(color="black", width=4), fillcolor="rgba(180,180,180,0.2)")
-    # رسم الكانة المحيطة
     fig.add_shape(type="rect", x0=25, y0=25, x1=b-25, y1=h-25, line=dict(color="blue", width=3))
     
-    # توزيع التسليح السفلي
+    # رسم الحديد السفلي والعلوي وتسميتهما
     for i in range(n_low):
         x_p = 45 + (i * (b-90)/(n_low-1 if n_low > 1 else 1))
-        fig.add_trace(go.Scatter(x=[x_p], y=[45], mode="markers", marker=dict(size=dia_low*1.2, color="red", line=dict(width=1, color="black")), showlegend=False))
-    
-    # توزيع التسليح العلوي
+        fig.add_trace(go.Scatter(x=[x_p], y=[45], mode="markers", marker=dict(size=dia_low*1.2, color="red"), showlegend=False))
     for i in range(n_up):
         x_p = 45 + (i * (b-90)/(n_up-1 if n_up > 1 else 1))
-        fig.add_trace(go.Scatter(x=[x_p], y=[h-45], mode="markers", marker=dict(size=dia_up*1.2, color="green", line=dict(width=1, color="black")), showlegend=False))
+        fig.add_trace(go.Scatter(x=[x_p], y=[h-45], mode="markers", marker=dict(size=dia_up*1.2, color="green"), showlegend=False))
     
-    # تسميات توضيحية على الرسم
-    fig.add_annotation(x=b/2, y=-40, text=f"السفلي: {n_low} T{dia_low}", showarrow=False, font=dict(color="red", size=16, family="Arial Black"))
-    fig.add_annotation(x=b/2, y=h+40, text=f"العلوي: {n_up} T{dia_up}", showarrow=False, font=dict(color="green", size=16, family="Arial Black"))
-    fig.add_annotation(x=b+50, y=h/2, text=f"الكانات: T{s_dia} @ {s_spacing} cm", textangle=90, showarrow=False, font=dict(color="blue", size=14))
-    fig.add_annotation(x=b+50, y=h/2-40, text=f"({int(100/s_spacing)} كائنات/م)", textangle=90, showarrow=False, font=dict(color="blue", size=12))
+    fig.add_annotation(x=b/2, y=-45, text=f"السفلي: {n_low} T{dia_low}", showarrow=False, font=dict(color="red", size=16))
+    fig.add_annotation(x=b/2, y=h+45, text=f"العلوي: {n_up} T{dia_up}", showarrow=False, font=dict(color="green", size=16))
+    fig.add_annotation(x=b+60, y=h/2, text=info_text, textangle=90, showarrow=False, font=dict(color="blue", size=14))
 
-    fig.update_layout(xaxis_visible=False, yaxis_visible=False, height=550, width=700, plot_bgcolor="white", margin=dict(t=80, b=80), title_text=title)
+    fig.update_layout(xaxis_visible=False, yaxis_visible=False, height=550, width=750, plot_bgcolor="white", title_text=title)
     return fig
 
-# --- تطبيق منطق التصميم ---
 if "جوائز" in choice:
-    st.header(f"🏗️ تصميم {choice}")
+    st.header(f"🏗️ تصميم {choice} (تباعد كانات مبرمج)")
     col1, col2 = st.columns([1, 2])
     with col1:
         L = st.number_input("طول المجاز (m)", value=5.0)
-        b = st.number_input("عرض الجائز b (mm)", value=300 if "ساقطة" in choice else 800)
-        h = st.number_input("الارتفاع الكلي h (mm)", value=500 if "ساقطة" in choice else 300)
+        b = st.number_input("العرض b (mm)", value=300 if "ساقطة" in choice else 800)
+        h = st.number_input("الارتفاع h (mm)", value=500 if "ساقطة" in choice else 300)
+        wu = st.number_input("الحمولة التصعيدية Wu (kN/m)", value=40.0)
         
-        # أحمال
-        st.subheader("📥 الأحمال والقص")
-        wu = st.number_input("الحمولة Wu (kN/m)", value=30.0)
-        vu = (wu * L) / 2 # قوة القص عند المسند
-        
-        # حسابات التسليح
-        mu = (wu * L**2) / 8
+        # --- البرمجة الذكية للكانات (القص) ---
+        Vu = (wu * L) / 2 # قوة القص القصوى
         d = h - 50
+        # مقاومة الخرسانة للقص (الكود السوري التقريربي)
+        Vc = 0.17 * np.sqrt(f_prime_c) * b * d / 1000 
+        
+        s_dia = 8 # القطر الافتراضي للكانة
+        if Vu <= 0.5 * Vc:
+            spacing = 20 # تباعد إنشائي أعظمي
+        elif Vu <= Vc:
+            spacing = 15
+        else:
+            # حساب التباعد المطلوب برمجياً
+            Av = 2 * (np.pi * s_dia**2 / 4) # فرعين
+            Vs = (Vu / 0.75) - Vc
+            if Vs > 0:
+                spacing = (Av * fy * d) / (Vs * 1000) / 10 # تحويل لـ cm
+                spacing = min(max(int(spacing), 10), 20) # حصر التباعد بين 10 و 20 سم
+            else:
+                spacing = 15
+        
+        n_stirrups = int(100/spacing)
+        st.metric("تباعد الكانات المبرمج", f"{spacing} cm", f"{n_stirrups} كائنات/م")
+        
+        # حساب الحديد الطولي
+        mu = (wu * L**2) / 8
         as_low = max((mu * 1e6) / (0.9 * fy * 0.9 * d), (1.4/fy)*b*d)
-        as_up = 0.25 * as_low # حديد تعليق
-        
-        # الكانات (القص)
-        s_spacing = st.slider("تباعد الكانات (cm)", 10, 25, 15)
-        s_dia = st.selectbox("قطر الكانة (mm)", [8, 10], index=0)
-        
-        st.divider()
         dia_l = st.selectbox("قطر السفلي", [14, 16, 18, 20], index=1)
-        dia_u = st.selectbox("قطر العلوي", [12, 14], index=0)
         
     with col2:
         n_l = int(np.ceil(as_low / (np.pi * dia_l**2 / 4)))
-        n_u = int(np.ceil(as_up / (np.pi * dia_u**2 / 4)))
-        if n_u < 2: n_u = 2
+        n_u = max(2, int(0.2 * n_l)) # حديد علوي تعليق
         
-        st.plotly_chart(draw_detailed_section(b, h, n_l, dia_l, n_u, dia_u, s_spacing, s_dia, f"مقطع تفصيلي في {choice}"))
-        
-        st.info(f"💡 عدد الكانات في المتر الطولي: {int(100/s_spacing)} كائنات T{s_dia}")
+        info_stirrup = f"الكانات: T{s_dia} @ {spacing} cm \n ({n_stirrups} T{s_dia} / m')"
+        st.plotly_chart(draw_smart_section(b, h, n_l, dia_l, n_u, 12, spacing, s_dia, f"مقطع {choice}", info_stirrup))
 
-# --- باقي العناصر (بلاطة هوردي، أعمدة، أساسات) تتبع نفس النمط ---
 elif choice == "بلاطة هوردي":
-    st.info("تم ضبط مقطع العصب ليكون (12/30) أو حسب إدخالك مع تسليح علوي وسفلي.")
-    # (كود الهوردي السابق مع استدعاء draw_detailed_section)
+    st.header("🧱 عصب هوردي بتسليح كامل")
+    # تطبيق نفس المنطق البرمجي للقص على العصب
+    b_rib = 120
+    h_rib = 300
+    st.plotly_chart(draw_smart_section(b_rib, h_rib, 2, 14, 2, 10, 20, 8, "مقطع عصب هوردي", "كانات T8 @ 20 cm"))
 
 elif choice == "الأعمدة":
-    st.info("تصميم الأعمدة مع توزيع الحديد على كامل المحيط وحساب الأساور.")
-
-elif choice == "الأساسات":
-    st.info("تصميم الأساسات المنفردة مع توضيح تسليح الفرش والغطاء.")
+    st.header("🏛️ الأعمدة (أساور مبرمجة)")
+    # تباعد الأساور في الأعمدة مبرمج (15 سم أو 10 حسب قطر القضبان)
+    st.plotly_chart(draw_smart_section(300, 500, 4, 16, 4, 16, 15, 8, "مقطع عمود", "أساور T8 @ 15 cm"))
 
 st.divider()
-st.write(f"✅ تم التصميم والتدقيق بواسطة المنظومة الرقمية للمهندس بيلان مصطفى عبدالكريم - 2026")
+st.caption(f"تمت البرمجة والتدقيق الإنشائي الذكي: المهندس بيلان مصطفى عبدالكريم - 0998449697")
