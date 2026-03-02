@@ -1,79 +1,56 @@
-import tkinter as tk
-from tkinter import messagebox
+import streamlit as st
 import math
 
-class SyrianDesignApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("برنامج التصميم الإنشائي - م. بيلان مصطفى")
-        self.root.geometry("500x650")
-        
-        # الختم المهني المحفوظ
-        self.stamp_text = "المهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات 0998449697"
+# إعدادات الصفحة
+st.set_page_config(page_title="برنامج المهندس بيلان الإنشائي", layout="centered")
 
-        # واجهة المدخلات
-        tk.Label(root, text="نظام التصميم الإنشائي (الكود السوري)", font=("Arial", 14, "bold")).pack(pady=10)
-        
-        # مدخلات البلاطة
-        tk.Label(root, text="طول مجاز البلاطة (متر):").pack()
-        self.ent_l = tk.Entry(root); self.ent_l.pack(); self.ent_l.insert(0, "4.5")
+# الترويسة والختم المهني
+st.title("🏗️ نظام التصميم الإنشائي المتكامل")
+st.subheader("المهندس المدني بيلان مصطفى عبدالكريم")
+st.info("دراسات - إشراف - تعهدات | 📞 0998449697")
 
-        # مدخلات العمود
-        tk.Label(root, text="حمولة العمود التصعيدية Pu (kN):").pack()
-        self.ent_pu = tk.Entry(root); self.ent_pu.pack(); self.ent_pu.insert(0, "2000")
+st.divider()
 
-        # مدخلات الأساس
-        tk.Label(root, text="قدرة تحمل التربة q_allow (kPa):").pack()
-        self.ent_q = tk.Entry(root); self.ent_q.pack(); self.ent_q.insert(0, "150")
+# منطقة المدخلات
+st.sidebar.header("📥 مدخلات المشروع")
+fcu = st.sidebar.number_input("المقاومة المكعبة للخرسانة fcu (MPa)", value=25)
+fy = st.sidebar.number_input("إجهاد خضوع الحديد fy (MPa)", value=400)
+q_soil = st.sidebar.number_input("قدرة تحمل التربة (kN/m²)", value=150)
 
-        # زر الحساب
-        tk.Button(root, text="احسب النتائج بختم المهندس", command=self.calculate, bg="green", fg="white", font=("Arial", 10, "bold")).pack(pady=20)
+tab1, tab2, tab3 = st.tabs(["البلاطات", "الأعمدة", "الأساسات"])
 
-        # منطقة النتائج
-        self.text_result = tk.Text(root, height=15, width=50)
-        self.text_result.pack(pady=10)
+with tab1:
+    st.header("📏 تصميم البلاطة (Slab)")
+    L = st.number_input("طول المجاز (L) بالمتر", value=4.5)
+    # حسابات الكود السوري (ممرات: 2.5 ميتة، 3 حية)
+    wu = (1.4 * 2.5) + (1.7 * 3.0)
+    mu = (wu * L**2) / 10
+    d = 130 # لبلاطة 15 سم
+    as_req = (mu * 1e6) / (0.9 * fy * 0.9 * d)
+    as_min = (1.4 / fy) * 1000 * d
+    final_as = max(as_req, as_min)
+    
+    st.success(f"التسليح السفلي المطلوب: {round(final_as)} مم²/م")
+    st.caption("تم الحساب وفق معادلات جامعة دمشق والحد الأدنى للكود السوري.")
 
-    def calculate(self):
-        try:
-            L = float(self.ent_l.get())
-            Pu = float(self.ent_pu.get())
-            q_allow = float(self.ent_q.get())
-            fcu = 25
-            fy = 400
-            f_prime_c = 0.8 * fcu # تحويل للمقاومة الأسطوانية حسب الكود السوري
+with tab2:
+    st.header("🏛️ تصميم الأعمدة (Columns)")
+    pu = st.number_input("الحمولة التصعيدية Pu (kN)", value=1500)
+    f_prime_c = 0.8 * fcu
+    # مقطع اقتصادي 1% حديد
+    ag_req = (pu * 1000) / (0.65 * 0.8 * (0.85 * f_prime_c * 0.99 + fy * 0.01))
+    side = math.sqrt(ag_req)
+    
+    st.success(f"المقطع الاقتصادي المقترح: {round(side/10)*10} x {round(side/10)*10} مم")
+    st.write(f"نسبة التسليح: 1% (اقتصادية)")
 
-            # 1. حساب البلاطة (الممرات: 2.5 ميتة، 3 حية)
-            wu = (1.4 * 2.5) + (1.7 * 3) # Wu = 8.6
-            mu = (wu * L**2) / 10 # عزم مستمر
-            d = 130 # لبلاطة 15سم
-            as_req = (mu * 1e6) / (0.9 * fy * 0.9 * d)
-            as_min = (1.4 / fy) * 1000 * d
-            final_as = max(as_req, as_min) # حل مشكلة عدم ظهور التسليح السفلي
+with tab3:
+    st.header("🧱 تصميم الأساسات (Footings)")
+    p_service = st.number_input("الحمولة التشغيلية (kN)", value=1000)
+    area_f = (p_service * 1.1) / q_soil
+    width = math.sqrt(area_f)
+    
+    st.success(f"أبعاد الأساس المربع: {round(width, 2)} x {round(width, 2)} متر")
 
-            # 2. حساب العمود (اقتصادي 1%)
-            ag_col = (Pu * 1000) / (0.65 * 0.8 * (0.85 * f_prime_c * 0.99 + fy * 0.01))
-            side = math.sqrt(ag_col)
-
-            # 3. حساب الأساس (مربع)
-            area_f = (Pu / 1.55 * 1.1) / q_allow
-            b_f = math.sqrt(area_f)
-
-            # عرض النتائج
-            self.text_result.delete(1.0, tk.END)
-            res = f"نتائج التصميم الإنشائي:\n"
-            res += f"{'-'*40}\n"
-            res += f"🏗️ تسليح البلاطة السفلي: {round(final_as)} mm2/m\n"
-            res += f"🏛️ مقطع العمود الاقتصادي: {round(side/10)*10} x {round(side/10)*10} mm\n"
-            res += f"🧱 أبعاد الأساس (B x L): {round(b_f, 2)} x {round(b_f, 2)} m\n"
-            res += f"{'-'*40}\n"
-            res += f"{self.stamp_text}"
-            
-            self.text_result.insert(tk.END, res)
-            
-        except Exception as e:
-            messagebox.showerror("خطأ", "يرجى التأكد من إدخال أرقام صحيحة")
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = SyrianDesignApp(root)
-    root.mainloop()
+st.divider()
+st.warning(f"تم التدقيق والاعتماد: {st.session_state.get('engineer', 'م. بيلان مصطفى عبدالكريم')}")
