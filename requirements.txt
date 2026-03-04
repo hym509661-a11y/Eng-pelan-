@@ -1,3 +1,5 @@
 opencv-python-headless
-ezdxf
-numpy
+​ezdxf
+​numpy 
+​streamlit 
+​Pillow 
