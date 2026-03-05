@@ -1,85 +1,92 @@
 import streamlit as st
 import math
 
-# إعدادات الصفحة وهوية المكتب
+# إعداد الصفحة والختم المهني
 st.set_page_config(page_title="مكتب المهندس بيلان - التصميم المتكامل", layout="wide")
 
-# الختم المهني (تأكد من النسخ الكامل)
 st.sidebar.markdown(f"""
-<div style="border: 2px solid #1E3A8A; padding: 15px; border-radius: 10px; background-color: #f8fafc; text-align: center;">
+<div style="border: 2px solid #1E3A8A; padding: 10px; border-radius: 10px; background-color: #f8fafc; text-align: center;">
     <h3 style="color: #1E3A8A; margin: 0;">المهندس المدني</h3>
     <h2 style="color: #1E3A8A; margin: 5px 0;">بيلان مصطفى عبدالكريم</h2>
-    <p style="margin: 0; font-weight: bold;">0998449697</p>
-    <p style="margin: 0; font-size: 0.8em;">دراسات - إشراف - تعهدات</p>
+    <p style="margin: 0; font-weight: bold; color: #ef4444;">0998449697</p>
 </div>
 """, unsafe_allow_html=True)
 
-# مدخلات التحكم في الشريط الجانبي (تغير الحسابات لحظياً)
+# مدخلات التحكم (المحرك الأساسي للحسابات)
 with st.sidebar:
-    st.header("⚙️ معطيات التحكم")
-    n_floors = st.slider("عدد الطوابق الإجمالي:", 1, 15, 11)
-    L = st.number_input("أطول مجاز L (cm):", value=530, step=10)
+    st.header("⚙️ متغيرات التصميم")
+    L = st.number_input("طول المجاز L (cm):", value=530, step=10)
+    n_floors = st.slider("عدد الطوابق:", 1, 15, 11)
     st.divider()
-    q_soil = st.slider("تحمل التربة (kg/cm²):", 1.0, 4.0, 2.5)
+    fy = 400  # MPa
+    fc = 25   # MPa
 
-st.title("🏗️ الحاسبة الإنشائية الديناميكية المرتبطة بالمجاز")
-st.caption("تم الربط البرمجي بين المجاز L والأبعاد الإنشائية وفق الكود السوري")
+st.title("🏗️ النظام الديناميكي لتصميم ورسم المنشآت")
+st.info(f"تم ربط جميع العناصر بالمجاز الحالي: {L} cm")
 
-# --- العمليات الحسابية المرتبطة بالمجاز L وعدد الطوابق ---
+# --- الحسابات المرتبطة كلياً بالمجاز L ---
 
-# 1. الجوائز الساقطة: الارتفاع مرتبط بالمجاز (L/14) + 10 سم أمان
-h_beam_drop = math.ceil((L / 14 + 10) / 5) * 5
-# 2. الجوائز المخفية: العرض مرتبط بالمجاز (L/4)
+# 1. بلاطة القبو (تتغير الآن مع L)
+# الكود: المحيط / 140 أو L/35 للبلاطات المصمتة باتجاهين
+h_qabo = max(12, math.ceil((L / 35) / 2) * 2)
+h_shelter = 20 # ثابتة للملاجئ حسب الكود
+
+# 2. الجوائز (ساقطة ومخفية)
+h_drop = math.ceil((L / 14 + 10) / 5) * 5
 b_hidden = max(105, math.ceil((L / 4) / 5) * 5)
-# 3. البلاطة الهوردي: السماكة مرتبطة بالمجاز (L/20)
-h_ribbed = max(30, math.ceil((L / 20) / 2) * 2)
-# 4. الحصيرة: السماكة مرتبطة بالمجاز (L/6) وفق الكود السوري
-h_raft = max(90, math.ceil((L / 6) / 10) * 10)
 
-# 5. الأعمدة: مرتبطة بعدد الطوابق ومساحة التحميل (مساحة التحميل مرتبطة بالمجاز L^2)
-area_load = (L/100) * (L/100) # مساحة التحميل التقريبية بالامتار المربعة
-P_total = area_load * 1.1 * n_floors # الحمولة الكلية بالطن
-area_req = (P_total * 1000) / (0.35 * 250 + 0.67 * 0.01 * 4000)
-col_length = max(50, math.ceil(area_req / 30 / 10) * 10) # الطول (العرض ثابت 30)
+# 3. الأعمدة (مساحة التحميل مرتبطة بـ L)
+load_area = (L/100)**2
+total_p = load_area * 1.15 * n_floors # طن
+col_len = max(50, math.ceil(((total_p * 1000) / (0.35*fc + 0.67*0.01*fy)) / 30 / 10) * 10)
 
-# --- عرض النتائج ---
-tab1, tab2 = st.tabs(["📊 نتائج الحسابات المرتبطة", "📐 تفاصيل الرسم الهندسي"])
+# 4. حسابات الحديد (تتغير مع الأبعاد)
+# فرضاً للجائز الساقط
+steel_bott = math.ceil((0.005 * 30 * h_drop) / 2.01) # T16
+steel_top = math.ceil(steel_bott * 0.75)
+stirrups = "T10 @ 10cm" # تكثيف
+
+# --- العرض المرئي ---
+tab1, tab2 = st.tabs(["📊 الحسابات الديناميكية", "📐 لوحات التسليح التفصيلية"])
 
 with tab1:
-    col_res1, col_res2 = st.columns(2)
-    with col_res1:
-        st.subheader("📍 العناصر الخطية (جوائز وأعمدة)")
-        st.write(f"**الجائز الساقط (L/14+10):** 30 × {h_beam_drop} cm")
-        st.write(f"**الجائز المخفي (L/4):** عرض {b_hidden} cm")
-        st.write(f"**عمود القبو (30xL):** 30 × {col_length} cm")
-        st.info(f"حمولة العمود المحسوبة: {P_total:.1f} Ton")
-
-    with col_res2:
-        st.subheader("📍 البلاطات والأساسات")
-        st.write(f"**بلاطة الهوردي (L/20):** {h_ribbed} cm")
-        st.write(f"**الحصيرة (L/6):** {h_raft} cm")
-        st.write(f"**بلاطة القبو المصمتة:** 12 cm")
-        st.write(f"**بلاطة الملجأ:** 20 cm")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("📍 البلاطات والجوائز")
+        st.success(f"• سماكة بلاطة القبو (L/35): {h_qabo} cm")
+        st.success(f"• ارتفاع الجائز الساقط (L/14): {h_drop} cm")
+        st.success(f"• عرض الجائز المخفي (L/4): {b_hidden} cm")
+    with c2:
+        st.subheader("📍 الأعمدة والأساسات")
+        st.warning(f"• عمود القبو (L_load): 30 × {col_len} cm")
+        st.warning(f"• سماكة الحصيرة (L/6): {max(90, math.ceil((L/6)/10)*10)} cm")
 
 with tab2:
-    st.header("📐 لوحات التسليح التفصيلية")
+    st.header("📐 لوحة تفريد الحديد (BBS)")
     
-    # تفصيلة الجائز والشابويات
-    st.subheader("1. تسليح الجوائز (الشابويات والكانات)")
+    # تفصيل الجائز
+    st.markdown("### 1️⃣ تسليح الجوائز (ساقطة ومخفية)")
     
-    st.markdown(f"**ملاحظة:** الشابويات تمتد لمسافة **{L/4:.0f} cm** من وجه العمود.")
+    st.table({
+        "نوع التسليح": ["سفلي مستمر", "علوي مستمر", "إضافي علوي (شابوه)", "كانات (Stirrups)"],
+        "العدد/القطر": [f"{steel_bott} T 16", f"{steel_top} T 14", f"{steel_top} T 16", stirrups],
+        "طول التوضع": ["كامل الجائز", "كامل الجائز", f"يمتد {L/4:.0f} cm من وجه العمود", "تكثيف عند المساند"]
+    })
 
-    # تفصيلة أجر البطة
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-        st.subheader("2. أجر البطة (أشاير الأعمدة)")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("### 2️⃣ تفصيلة أجر البطة (العمود)")
         
-        st.write("تثبيت الأشاير داخل القاعدة بشكل حرف L بطول 40 سم.")
+        st.write(f"ثني الأشاير داخل القاعدة بطول لا يقل عن 40 cm.")
+
+    with col_b:
+        st.markdown("### 3️⃣ مقص الدرج")
+        
+        st.write(f"سماكة الشاحط: {max(15, math.ceil((290/20)))} cm")
+
+    st.markdown("### 4️⃣ تسليح البلاطة المصمتة (علوي وسفلي)")
     
-    with col_d2:
-        st.subheader("3. مقص الدرج (Scissor)")
-        
-        st.write("يتم عمل المقص عند البسطة لمنع انفصال الخرسانة.")
+    st.write(f"شبكة سفلية 5 T 10 / m | إضافي علوي فوق الجوائز (شابويات) {L/4:.0f} cm.")
 
 st.divider()
-st.caption(f"تم تحديث كافة الحسابات بناءً على المجاز المتغير {L} cm - م. بيلان")
+st.caption(f"تحديث: تم ربط بلاطة القبو والأعمدة بالمجاز {L} cm - م. بيلان")
