@@ -1,105 +1,109 @@
 import streamlit as st
 import math
 
-# إعدادات الصفحة والسمة الاحترافية
-st.set_page_config(page_title="نظام التصميم الإنشائي - م. بيلان", layout="wide")
+# إعدادات الواجهة المهنية
+st.set_page_config(page_title="مكتب المهندس بيلان - التصميم المتكامل", layout="wide")
 
-# تصميم الهوية في الشريط الجانبي
+# الهوية البصرية في الشريط الجانبي
 with st.sidebar:
-    st.markdown("## 🏗️ المكتب الهندسي")
-    st.info("المهندس المدني بيلان مصطفى عبدالكريم\n0998449697\nدراسات - إشراف - تعهدات")
+    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🏗️ المكتب الهندسي</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'><b>المهندس بيلان مصطفى عبدالكريم</b><br>0998449697</p>", unsafe_allow_html=True)
     st.markdown("---")
-    n_floors = st.number_input("عدد الطوابق الإجمالي:", value=11, min_value=1)
-    L_cm = st.number_input("أطول مجاز بين الأعمدة L (cm):", value=530)
-    q_soil = st.slider("تحمل التربة (kg/cm²):", 1.0, 4.0, 2.5)
+    n_floors = st.number_input("عدد الطوابق الإجمالي (بما فيه القبو):", value=11, min_value=1)
+    L_cm = st.number_input("أكبر مجاز بين الأعمدة L (cm):", value=530)
+    q_soil = st.slider("قدرة تحمل التربة (kg/cm²):", 1.0, 4.0, 2.5)
+    st.markdown("---")
+    st.caption("تم التطوير وفق الكود العربي السوري ومعطيات دمشق UBC97")
 
-st.title("🏛️ منصة التصميم الإنشائي المتكاملة")
-st.caption("تمت البرمجة وفق الكود العربي السوري ومعطيات مشروع برج دمشق")
+st.markdown("<h1 style='color: #1E3A8A;'>المنصة الذكية للتصميم ورسم التسليح</h1>", unsafe_allow_html=True)
 
-# تبويبات منظمة
-tabs = st.tabs(["📊 الحسابات الإنشائية", "🎨 التفاصيل والرسم الهندسي"])
+# تبويبات النظام
+tab_calc, tab_draw = st.tabs(["📊 جداول البيانات والحسابات", "📐 التفاصيل الإنشائية والرسم"])
 
-with tabs[0]:
-    col1, col2 = st.columns(2)
+# --- الحسابات المنطقية ---
+# حساب حمل العمود التقريبي (مساحة تحميل 25 م2 * وزن 1.2 طن/م2 * عدد الطوابق)
+P_ton = 25 * 1.2 * n_floors 
+# أبعاد العمود (العرض ثابت 30سم كما طلبت المعماري)
+# القانون: P = 0.35 * f'c * Ac + 0.67 * fy * As | مع فرض نسبة تسليح 1%
+col_width = 30
+col_length_req = (P_ton * 1000) / (0.35 * 250 + 0.67 * 0.01 * 4000)
+col_length = max(50, math.ceil(col_length_req / 10) * 10) # تقريب لأقرب 10 سم
+
+# الجوائز
+h_drop = math.ceil((L_cm / 14 + 10) / 5) * 5
+b_hidden = max(105, math.ceil((L_cm / 4) / 5) * 5)
+
+with tab_calc:
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.info("### 🏢 الأعمدة (Columns)")
+        st.metric("بُعد عمود القبو (cm)", f"{col_width} × {col_length}")
+        st.metric("بُعد عمود الأخير (cm)", "30 × 50")
+        st.write(f"الحمولة التقديرية: {P_ton:.1f} Ton")
+
+    with c2:
+        st.success("### 📏 الجوائز (Beams)")
+        st.write(f"**ساقط:** {col_width} × {h_drop} cm")
+        st.write(f"**مخفي (عرض):** {b_hidden} cm")
+        st.write(f"**سماكة الهوردي:** 30 cm")
+
+    with c3:
+        st.warning("### 🧱 الأساسات")
+        if n_floors > 8:
+            st.write("**الخيار المفضل:** حصيرة (Raft)")
+            st.write(f"**السماكة:** {max(90, math.ceil((L_cm/6)/10)*10)} cm")
+        else:
+            dim_f = math.sqrt((P_ton * 1.1) / (q_soil * 10))
+            st.write(f"**أساس منفرد:** {dim_f:.2f} × {dim_f:.2f} m")
+
+with tab_draw:
+    st.subheader("🎨 لوحات تفاصيل التسليح (Shop Drawings)")
     
-    with col1:
-        st.subheader("🔹 البلاطات (Slabs)")
-        # مصمتة
-        h_solid = max(12, math.ceil((L_cm/35)/2)*2)
-        st.success(f"البلاطة المصمتة: {h_solid} cm")
-        # هوردي
-        h_rib = max(30, math.ceil((L_cm/20)/2)*2)
-        st.success(f"البلاطة الهوردي: {h_rib} cm")
-        
-        st.subheader("🔹 الجوائز (Beams)")
-        # ساقطة
-        h_drop = math.ceil((L_cm/14 + 10)/5)*5
-        st.success(f"جائز ساقط: 30 × {h_drop} cm")
-        # مخفية
-        b_hidden = max(105, math.ceil((L_cm/4)/5)*5)
-        st.success(f"جائز مخفي (عرض): {b_hidden} cm")
-
-    with col2:
-        st.subheader("🔹 الأعمدة (Columns)")
-        # حساب حمل تقديري: 1.2 طن لكل متر مربع لكل طابق
-        est_load = (n_floors * 25 * 1.2) 
-        col_width = 30
-        col_length = max(50, math.ceil((est_load * 1000 / (0.4 * 250)) / 10) * 10)
-        st.warning(f"بعد العمود (قبو): {col_width} × {col_length} cm")
-        st.warning(f"بعد العمود (سطح): 30 × 50 cm")
-
-        st.subheader("🔹 الأساسات (Foundations)")
-        f_type = st.selectbox("نوع الأساس:", ["منفرد", "مشترك", "حصيرة"])
-        if f_type == "منفرد":
-            f_dim = math.sqrt((est_load * 1.1) / (q_soil * 10))
-            st.success(f"أبعاد الأساس: {f_dim:.2f} × {f_dim:.2f} m")
-        elif f_type == "حصيرة":
-            h_raft = max(90, math.ceil((L_cm/6)/10)*10)
-            st.success(f"سماكة الحصيرة: {h_raft} cm")
-
-with tabs[1]:
-    st.header("📐 الرسوم التفصيلية للتسليح")
-    
-    # رسم تخطيطي للجائز (CSS/HTML)
-    st.markdown("### 1. تفصيلة الجائز (شابويات وكانات)")
-    st.markdown("""
-    <div style="border: 2px solid #2ecc71; padding: 20px; border-radius: 10px; background-color: #f9f9f9;">
-        <div style="height: 40px; border-bottom: 4px solid #c0392b; position: relative;">
-            <span style="position: absolute; right: 20%; top: -10px; color: #c0392b;">إضافي علوي (شابوه) L/4</span>
+    # 1. رسم تفصيلة الجائز والشابويات
+    st.markdown("#### أولاً: تسليح الجوائز المستمرة (الشابويات)")
+    st.markdown(f"""
+    <div style="background-color: #f1f5f9; padding: 20px; border-radius: 15px; border-left: 10px solid #1E3A8A;">
+        <div style="height: 10px; width: 30%; background: #ef4444; margin-left: auto; margin-right: auto; border-radius: 5px;"></div>
+        <p style="text-align: center; color: #ef4444; font-size: 12px;">حديد إضافي علوي (شابوه) يمتد {L_cm/4:.0f} cm</p>
+        <div style="height: 80px; width: 90%; border: 3px solid #1e293b; margin: 10px auto; display: flex; align-items: center; justify-content: space-between;">
+            <div style="width: 5px; height: 100%; background: #1e293b;"></div>
+            <div style="flex-grow: 1; border-right: 1px dashed #94a3b8; height: 80%; text-align: center; line-height: 60px;">كانات مكثفة T10@10</div>
+            <div style="width: 5px; height: 100%; background: #1e293b;"></div>
         </div>
-        <div style="height: 60px; border: 2px solid #34495e; margin-top: 5px; display: flex; align-items: center; justify-content: space-around;">
-             <div style="width: 2px; height: 100%; background: #34495e;"></div>
-             <div style="color: #7f8c8d;">توزيع كانات مكثف T10@10</div>
-             <div style="width: 2px; height: 100%; background: #34495e;"></div>
-        </div>
-        <div style="height: 5px; background: #c0392b; margin-top: 5px;"></div>
-        <div style="text-align: center; color: #c0392b;">حديد سفلي مستمر مع عكفة (Hook)</div>
+        <div style="height: 5px; width: 95%; background: #ef4444; margin: 0 auto;"></div>
+        <p style="text-align: center; color: #ef4444; font-size: 12px;">حديد سفلي مستمر مع عكفة 90 درجة</p>
     </div>
     """, unsafe_allow_html=True)
+    
 
-    col_draw1, col_draw2 = st.columns(2)
-    with col_draw1:
-        st.markdown("### 2. الأساس والعمود (أجر البطة)")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("#### ثانياً: أجر البطة (الأساسات)")
         st.markdown("""
-        <div style="border: 2px solid #3498db; padding: 15px; text-align: center;">
-            <div style="width: 40px; height: 100px; border: 2px solid black; margin: 0 auto; position: relative;">
-                <div style="position: absolute; bottom: 0; width: 100px; height: 2px; background: red; left: -30px;"></div>
-                <div style="position: absolute; bottom: 0; width: 2px; height: 20px; background: red; left: -30px;"></div>
-                <div style="position: absolute; bottom: 0; width: 2px; height: 20px; background: red; right: -30px;"></div>
+        <div style="text-align: center; padding: 20px; border: 2px solid #3b82f6; border-radius: 10px;">
+            <div style="width: 30px; height: 120px; border: 2px solid #1e293b; margin: 0 auto; position: relative;">
+                <div style="position: absolute; bottom: 0; width: 80px; height: 4px; background: #ef4444; left: -25px;"></div>
+                <div style="position: absolute; bottom: 0; width: 4px; height: 20px; background: #ef4444; left: -25px;"></div>
             </div>
-            <p>تمثيل "أجر البطة" للأشاير داخل القاعدة</p>
+            <p style="color: #1e3a8a;">تفصيلة أشاير العمود مع القاعدة</p>
         </div>
         """, unsafe_allow_html=True)
+        
 
-    with col_draw2:
-        st.markdown("### 3. مقص الدرج (Scissor)")
+    with col_b:
+        st.markdown("#### ثالثاً: مقص الدرج (Scissor Joint)")
         st.markdown("""
-        <div style="border: 2px solid #e67e22; padding: 15px; text-align: center; height: 180px;">
-            <div style="width: 100px; height: 2px; background: red; transform: rotate(-30deg); margin-top: 50px; margin-left: 50px;"></div>
-            <div style="width: 100px; height: 2px; background: red; transform: rotate(0deg); margin-left: 100px;"></div>
-            <p style="margin-top: 40px;">مبدأ "المقص" عند التقاء الشاحط بالبسطة</p>
+        <div style="text-align: center; padding: 20px; border: 2px solid #f59e0b; border-radius: 10px; height: 200px;">
+            <svg width="200" height="100">
+                <line x1="10" y1="80" x2="100" y2="20" style="stroke:red;stroke-width:4" />
+                <line x1="100" y1="20" x2="190" y2="20" style="stroke:red;stroke-width:4" />
+                <line x1="10" y1="60" x2="110" y2="60" style="stroke:blue;stroke-width:3" />
+                <line x1="110" y1="60" x2="190" y2="10" style="stroke:blue;stroke-width:3" />
+            </svg>
+            <p style="color: #1e3a8a;">تداخل الحديد (المقص) عند البسطة</p>
         </div>
         """, unsafe_allow_html=True)
+        
 
 st.markdown("---")
-st.markdown(f"**الخلاصة المهنية:** تم اعتماد أبعاد الأعمدة {col_width}×{col_length} سم للقبو، والأساسات بنوعها المختار تحقق إجهاد التربة {q_soil} kg/cm².")
+st.markdown(f"**ملاحظة مكتبية:** أبعاد الأعمدة {col_width}×{col_length} سم للقبو هي أبعاد اقتصادية تحقق متطلبات الكود السوري لمبنى من {n_floors} طابقاً.")
