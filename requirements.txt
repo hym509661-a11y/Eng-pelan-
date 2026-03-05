@@ -1,5 +1,1 @@
-opencv-python-headless
-ezdxf
-numpy
 streamlit
-Pillow
