@@ -1,74 +1,88 @@
 import streamlit as st
 import math
 
-# إعدادات الصفحة
-st.set_page_config(page_title="برج دمشق - م. بيلان", layout="wide")
-st.sidebar.markdown("### 🏗️ المكتب الهندسي")
-st.sidebar.info("المهندس بيلان مصطفى عبدالكريم\nمشروع برج سكني 11 طابق")
+# إعدادات المكتب والختم
+st.set_page_config(page_title="المكتب الهندسي - م. بيلان", layout="wide")
+st.sidebar.markdown(f"### المهندس المدني بيلان مصطفى عبدالكريم\nدراسات-اشراف-تعهدات\n0998449697")
 
-st.title("الحاسبة الإنشائية الديناميكية (الكود السوري)")
-st.write("قم بتغيير طول المجاز، وستتغير القيم المعتمدة (بالأخضر) تلقائياً")
+st.title("🏗️ النظام المتكامل للتصميم ورسم التسليح")
+st.write("الحسابات تعتمد على الكود السوري - مشروع برج دمشق 11 طابق")
 
-# المدخل الأساسي: طول المجاز
-L = st.number_input("أدخل طول أكبر مجاز L (cm):", value=530, step=10)
+# المدخلات الأساسية
+with st.sidebar:
+    st.header("⚙️ المدخلات العامة")
+    L = st.number_input("أكبر مجاز للمشروع L (cm):", value=530)
+    fy = st.sidebar.selectbox("إجهاد الخضوع للحديد (MPa):", [400, 280, 420], index=0)
+    fc = st.sidebar.number_input("مقاومة البيتون f'c (MPa):", value=25)
 
-st.markdown("---")
-col1, col2 = st.columns(2)
+tabs = st.tabs(["البلاطات (مصمتة/هوردي)", "الجوائز والأعمدة", "الأساسات (منفرد/حصيرة)", "تفاصيل التسليح (رسم)"])
 
-# --- قسم الجوائز (Beams) ---
-with col1:
-    st.header("📏 الجوائز (Beams)")
-    
-    # 1. الجوائز الساقطة (حسب الملف: L/14 + 10cm أمان)
-    h_drop_req = L / 14
-    h_drop_final = math.ceil((h_drop_req + 10) / 5) * 5 # تقريب لأقرب 5 سم
-    
-    st.subheader("الجائز الساقط (سقف القبو)")
-    st.write(f"المطلوب إنشائياً (L/14): {h_drop_req:.1f} cm")
-    st.success(f"القيمة المعتمدة بالأخضر: 30 × {h_drop_final} cm")
-    
-    # 2. الجوائز المخفية (حسب الملف: وسطية L/4)
-    b_hidden_req = L / 4
-    b_hidden_final = max(105, math.ceil(b_hidden_req / 5) * 5)
-    
-    st.subheader("الجائز المخفي (الهوردي)")
-    st.write(f"المطلوب للجائز الوسطي (L/4): {b_hidden_req:.1f} cm")
-    st.success(f"القيمة المعتمدة بالأخضر: عرض {b_hidden_final} cm")
+# --- 1. البلاطات ---
+with tabs[0]:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("🍀 البلاطة المصمتة (Solid)")
+        h_solid = max(12, math.ceil((L/35)/2)*2)
+        st.success(f"السماكة المعتمدة: {h_solid} cm")
+        As_min = 0.0018 * 100 * h_solid
+        st.write(f"التسليح الأدنى: {As_min:.2f} cm²/m")
+        st.info(f"المقترح: 5 T 10 / m (فرش وغطاء)")
 
-# --- قسم البلاطات والأساسات ---
-with col2:
-    st.header("🏗️ البلاطات والأساسات")
-    
-    # 1. بلاطة الهوردي (حسب حالة الاستمرار)
-    st.subheader("بلاطة الهوردي")
-    case = st.selectbox("حالة الاستمرار:", ["مستمرة طرفين (L/20)", "مستمرة طرف (L/18)", "بسيطة (L/16)"])
-    divs = {"مستمرة طرفين (L/20)": 20, "مستمرة طرف (L/18)": 18, "بسيطة (L/16)": 16}
-    
-    h_rib_min = L / divs[case]
-    h_rib_final = max(30, math.ceil(h_rib_min / 2) * 2) # الحد الأدنى بالمشروع 30 سم
-    
-    st.write(f"المطلوب إنشائياً: {h_rib_min:.1f} cm")
-    st.success(f"القيمة المعتمدة بالأخضر: {h_rib_final} cm")
-    
-    # 2. الحصيرة (حسب الكود السوري L/6)
-    st.subheader("الحصيرة (Raft)")
-    h_raft_min = L / 6
-    h_raft_final = max(90, math.ceil(h_raft_min / 10) * 10) # الحد الأدنى 90 سم
-    
-    st.write(f"المطلوب حسب الكود السوري (L/6): {h_raft_min:.1f} cm")
-    st.success(f"القيمة المعتمدة بالأخضر: {h_raft_final} cm")
+    with col2:
+        st.subheader("🏗️ البلاطة الهوردي")
+        h_rib = max(30, math.ceil((L/20)/2)*2)
+        st.success(f"السماكة المعتمدة: {h_rib} cm")
+        st.write("التسليح: 2 T 14 (سفلي للعصب)")
 
-# --- قسم الدرج (حسب معطيات الملف) ---
-st.markdown("---")
-st.header("🪜 حسابات الدرج (الشاحط)")
-L_stair = 290 # ثابت حسب ملفك
-h_stair_final = max(15, math.ceil((L_stair/20)))
+# --- 2. الجوائز والأعمدة ---
+with tabs[1]:
+    col3, col4 = st.columns(2)
+    with col3:
+        st.subheader("📏 الجوائز (Beams)")
+        h_beam = math.ceil((L/14 + 10)/5)*5
+        st.success(f"جائز ساقط: 30 × {h_beam} cm")
+        st.write(f"الكانات: T 8 @ 15 cm (تكثيف عند المساند)")
+        
+    with col4:
+        st.subheader("🗿 الأعمدة (Columns)")
+        st.write("تدرج الأعمدة (C1):")
+        st.table({"الطابق": ["القبو", "المتكرر", "الأخير"], "الأبعاد": ["30x100", "30x70", "30x50"]})
 
-col_s1, col_s2 = st.columns(2)
-col_s1.write(f"طول الشاحط: {L_stair} cm")
-col_s1.success(f"سماكة الشاحط المعتمدة (L/20): {h_stair_final} cm")
-col_s2.write("زاوية الميل: 27°")
-col_s2.write("الحمولة الحية المعتمدة: 4 kN/m²")
+# --- 3. الأساسات ---
+with tabs[2]:
+    st.header("🧱 القواعد والأساسات")
+    f_type = st.selectbox("نوع الأساس:", ["أساس منفرد", "أساس مشترك", "حصيرة (Raft)"])
+    
+    if f_type == "حصيرة (Raft)":
+        h_raft = max(90, math.ceil((L/6)/10)*10)
+        st.success(f"سماكة الحصيرة المعتمدة: {h_raft} cm")
+        st.write(f"التسليح: شبكتين (علوي وسفلي) 7 T 20 / m")
+    else:
+        st.write("يتم التصميم بناءً على قدرة تحمل التربة (2.5 kg/cm²)")
 
-st.divider()
-st.caption("تمت البرمجة وفق دراسة الدكتور فادي نقرش - إعداد المهندس بيلان مصطفى")
+# --- 4. تفاصيل التسليح والرسم ---
+with tabs[3]:
+    st.header("🎨 مخططات التسليح الدقيقة")
+    
+    st.subheader("1. تفصيلة " + f_type)
+    if f_type == "حصيرة (Raft)":
+        st.markdown("""
+        * **الشبكة السفلية:** حديد مستمر مع "رجل بطة" (U-Shape) عند النهايات بطول $L_d$.
+        * **الشبكة العلوية:** حديد مستمر محمول على **كراسي (Chairs)** بارتفاع مناسب.
+        * **الوصلات:** تراكب (Overlap) بمقدار $50\phi$ (حوالي 100 سم لقطر 20).
+        """)
+        
+    
+    st.subheader("2. تسليح الجوائز (الشابويات)")
+    st.markdown(f"""
+    * **تسليح سفلي:** 3 T 16 مستمر.
+    * **تسليح علوي (شابويات):** إضافي عند المساند يمتد لـ $L/4$ من وجه العمود.
+    * **الكانات:** مغلقة بزاوية 135 درجة (Anti-seismic hooks).
+    """)
+    
+
+    st.subheader("3. تسليح الدرج (أجر البطة)")
+    st.markdown("""
+    * **التسليح الرئيسي:** يتم عمل "مقص" (Scissor junction) عند التقاء الشاحط بالميدة.
+    * **أجر البطة:** نهايات الحديد تثبت داخل الجوائز الحاملة بطول ارتكاز كافٍ.
+    """)
