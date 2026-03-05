@@ -1,84 +1,61 @@
 import streamlit as st
-import math
 
-# إعدادات الصفحة والختم الخاص بك
-st.set_page_config(page_title="مكتب المهندس بيلان مصطفى", layout="wide")
-st.sidebar.markdown("### المهندس المدني بيلان مصطفى عبدالكريم\n دراسات-اشراف-تعهدات \n 0998449697")
+# إعداد واجهة البرنامج
+st.set_page_config(page_title="برنامج المهندس بيلان الإنشائي", layout="wide")
 
-st.title("نظام التصميم الإنشائي المتكامل - مشروع برج دمشق")
+st.sidebar.title("المكتب الهندسي")
+st.sidebar.info("المهندس بيلان مصطفى عبدالكريم\nمشروع برج دمشق (11 طابق)")
 
-# تقسيم التطبيق إلى تبويبات حسب أقسام الملف
-tab1, tab2, tab3, tab4 = st.tabs(["البلاطات (Slabs)", "الزلازل (Seismic)", "الأساسات (Foundations)", "الدرج (Stairs)"])
+st.title("🏗️ نظام الحسابات الإنشائية التفاعلي")
 
-# --- القسم الأول: البلاطات ---
+# تبويبات حسب معطيات المشروع
+tab1, tab2, tab3 = st.tabs(["بلاطات القبو والملجأ", "بلاطة المتكرر (هوردي)", "الأساسات (الحصيرة)"])
+
+# --- القسم الأول: بلاطات القبو والملجأ ---
 with tab1:
-    st.header("تصميم البلاطات (مصمتة / هوردي)")
-    type_slab = st.selectbox("نوع البلاطة", ["مصمتة (Solid)", "هوردي (Ribbed)"])
+    [span_1](start_span)st.header("دراسة بلاطة سقف القبو")[span_1](end_span)
+    [span_2](start_span)[span_3](start_span)type_qabo = st.radio("نوع الجزء المراد دراسته:", ["قبو عادي (ممر/غرفة حارس)", "ملجأ"])[span_2](end_span)[span_3](end_span)
     
-    L_max = st.number_input("أكبر مجاز (L) بالمتر", value=5.3)
+    [span_4](start_span)L_qabo = st.number_input("أكبر مجاز في البلاطة (m)", value=5.3, key="q1")[span_4](end_span)
     
-    if type_slab == "مصمتة (Solid)":
-        # [span_0](start_span)شرط الملف: البلاطة العاملة باتجاهين (المحيط المكافئ / 140)[span_0](end_span)
-        h_min = (L_max * 100) / 35 # تقريبي للمحيط أو حسب شرط L/25
-        st.info(f"السماكة المقترحة حسب الكود السوري: {h_min:.2f} سم")
-        thickness = st.slider("اختر السماكة (cm)", 10, 25, 12)
-        
-        # [span_1](start_span)شرط الملجأ[span_1](end_span)
-        is_shelter = st.checkbox("هل هي بلاطة ملجأ؟")
-        if is_shelter:
-            if thickness < 20:
-                [span_2](start_span)st.error("تحذير: حسب توصيات وزارة الدفاع لا تقل سماكة الملجأ عن 20 سم[span_2](end_span)")
-            [span_3](start_span)live_load = 20 # 20kn/m2[span_3](end_span)
-            st.write(f"الحمولة الحية للملجأ: {live_load} kN/m²")
-            
-    else: # هوردي
-        # [span_4](start_span)شروط الهوردي حسب الاستمرارية[span_4](end_span)
-        condition = st.selectbox("حالة الاستناد", ["بسيط (L/16)", "مستمرة طرف واحد (L/18)", "مستمرة طرفين (L/20)", "ظفر (L/8)"])
-        divisor = {"بسيط (L/16)": 16, "مستمرة طرف واحد (L/18)": 18, "مستمرة طرفين (L/20)": 20, "ظفر (L/8)": 8}
-        h_rib = (L_max * 100) / divisor[condition]
-        st.success(f"السماكة الدنيا المطلوبة للهوردي: {h_rib:.2f} سم")
+    if type_qabo == "ملجأ":
+        [span_5](start_span)st.warning("⚠️ اشتراطات وزارة الدفاع والكود السوري للملاجئ")[span_5](end_span)
+        [span_6](start_span)h_shelter = st.selectbox("سماكة البلاطة المعتمدة (cm)", [20, 25], index=0)[span_6](end_span)
+        [span_7](start_span)live_load = 20 # 2 ton/m2[span_7](end_span)
+        [span_8](start_span)st.write(f"• السماكة الدنيا: 20 cm")[span_8](end_span)
+        [span_9](start_span)st.write(f"• الحمولة الحية (الردم/القصف): {live_load} kN/m²")[span_9](end_span)
+    else:
+        [span_10](start_span)h_qabo = (L_qabo * 100) / 35 # حساب تقريبي للمحيط المكافئ[span_10](end_span)
+        [span_11](start_span)st.write(f"• السماكة المقترحة إنشائياً: 12 cm")[span_11](end_span)
+        [span_12](start_span)live_load = 3 # ممرات[span_12](end_span)
+        [span_13](start_span)st.write(f"• الحمولة الحية للممرات: {live_load} kN/m²")[span_13](end_span)
 
-# --- القسم الثاني: الزلازل (UBC 97) ---
+# --- القسم الثاني: بلاطة المتكرر (هوردي) ---
 with tab2:
-    st.header("التحليل الزلزالي (حسب المنطقة 2C)")
-    # [span_5](start_span)المعطيات الثابتة في دمشق حسب الملف[span_5](end_span)
-    st.write("المنطقة الزلزالية: **2C** (دمشق)")
-    [span_6](start_span)soil_type = st.selectbox("نوع التربة", ["C", "D", "E"], index=0) # الملف ذكر تربة C[span_6](end_span)
+    [span_14](start_span)st.header("دراسة البلاطة المعصبة (Hordy)")[span_14](end_span)
+    [span_15](start_span)[span_16](start_span)L_rib = st.number_input("طول مجاز العصب (m)", value=5.3, key="r1")[span_15](end_span)[span_16](end_span)
+    [span_17](start_span)case = st.selectbox("حالة استمرار العصب:", ["بسيط (L/16)", "مستمر طرف (L/18)", "مستمر طرفين (L/20)", "ظفر (L/8)"])[span_17](end_span)
     
-    # حساب المعاملات Ca و Cv تلقائياً بناءً على اختيارك
-    ca = 0.29 if soil_type == "C" else 0.32
-    cv = 0.38 if soil_type == "C" else 0.44
-    st.write(f"معاملات التصميم: Ca={ca}, Cv={cv}")
+    divisors = {"بسيط (L/16)": 16, "مستمر طرف (L/18)": 18, "مستمر طرفين (L/20)": 20, "ظفر (L/8)": 8}
+    h_min_rib = (L_rib * 100) / divisors[case]
     
-    system_type = st.radio("الجملة المقاومة", ["جدران قص فقط (R=4.5)", "جملة إطارية (R=5.5)", "جملة مشتركة (R=6.5)"])
-    R_map = {"جدران قص فقط (R=4.5)": 4.5, "جملة إطارية (R=5.5)": 5.5, "جملة مشتركة (R=6.5)": 6.5}
-    [span_7](start_span)st.write(f"معامل الاستجابة الزلزالية المعتمد: R = {R_map[system_type]}[span_7](end_span)")
+    [span_18](start_span)st.success(f"السماكة الدنيا المطلوبة: {h_min_rib:.1f} cm")[span_18](end_span)
+    [span_19](start_span)st.write("• السماكة المعتمدة في المشروع: 30 cm")[span_19](end_span)
+    [span_20](start_span)st.write("• تغطية البلاطة (Concrete Topping): 6 cm")[span_20](end_span)
 
 # --- القسم الثالث: الأساسات (الحصيرة) ---
 with tab3:
-    st.header("تصميم الحصيرة (Raft Foundation)")
-    L_raft = st.number_input("أكبر مجاز بين الأعمدة في الحصيرة (m)", value=5.3)
-    # [span_8](start_span)شرط الكود السوري L/6 إلى L/8[span_8](end_span)
-    h_syrian_min = (L_raft * 100) / 8
-    h_syrian_max = (L_raft * 100) / 6
-    st.write(f"السماكة حسب الكود السوري: بين {h_syrian_min:.1f} و {h_syrian_max:.1f} سم")
+    [span_21](start_span)st.header("دراسة الحصيرة (Raft Foundation)")[span_21](end_span)
+    [span_22](start_span)st.write("عدد الطوابق: 11 طابق")[span_22](end_span)
+    [span_23](start_span)L_raft = st.number_input("أكبر مجاز بين المساند (m)", value=5.3, key="f1")[span_23](end_span)
     
-    chosen_h = st.number_input("السماكة المعتمدة للحصيرة (cm)", value=90)
-    # [span_9](start_span)حساب التسليح الأدنى[span_9](end_span)
-    min_reinforcement = 0.00125 * 1000 * (chosen_h * 10) / 1000 # cm2/m
-    st.info(f"نسبة التسليح الدنيا (0.125%): {min_reinforcement:.2f} cm²/m")
-
-# --- القسم الرابع: الدرج ---
-with tab4:
-    st.header("تصميم الشاحط والميدة")
-    L_stair = st.number_input("طول الشاحط (cm)", value=290)
-    # [span_10](start_span)حساب السماكة L/20 إلى L/25[span_10](end_span)
-    t_min = L_stair / 25
-    t_max = L_stair / 20
-    st.write(f"سماكة الشاحط المقترحة: بين {t_min:.1f} و {t_max:.1f} سم")
+    [span_24](start_span)h_raft_syrian = (L_raft * 100) / 6 # الكود السوري L/6[span_24](end_span)
+    [span_25](start_span)st.write(f"• السماكة حسب الكود السوري (L/6): {h_raft_syrian:.1f} cm")[span_25](end_span)
+    [span_26](start_span)st.info("السماكة المعتمدة للمشروع لتقليل الحديد: 90 cm")[span_26](end_span)
     
-    live_stair = st.slider("الحمولة الحية للدرج (kN/m²)", 3, 5, 4)
-    [span_11](start_span)st.warning("ملاحظة: تم رفع الحمولة إلى 4 kN/m² لتغطية معامل الديناميك في حالات الطوارئ[span_11](end_span)")
+    st.subheader("تسليح الحصيرة")
+    [span_27](start_span)st.write("• التسليح الأدنى المعتمد: 7T20 لكل متر في الاتجاهين")[span_27](end_span)
+    [span_28](start_span)st.write("• التراكب (Overlap): 50Ø (يصل إلى 1 متر)")[span_28](end_span)
 
 st.divider()
-st.caption("برمجية مخصصة لمشروع البرج السكني - إعداد المهندس بيلان مصطفى")
+st.center = st.write("تمت البرمجة وفق معطيات مشروع الدكتور فادي نقرش - إعداد م. بيلان")
