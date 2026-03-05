@@ -1,80 +1,88 @@
 import streamlit as st
-import math
 
-# إعداد واجهة المكتب الهندسي
-st.set_page_config(page_title="مكتب المهندس بيلان مصطفى", layout="wide")
-st.sidebar.markdown("### 🏗️ المهندس بيلان مصطفى عبدالكريم\nدراسات - إشراف - تعهدات\n0998449697")
+# إعدادات الصفحة وهوية المكتب
+st.set_page_config(page_title="برج دمشق - م. بيلان", layout="wide")
+st.sidebar.markdown("### 🏗️ المكتب الهندسي")
+st.sidebar.info("المهندس بيلان مصطفى عبدالكريم\nدراسة برج سكني 11 طابق")
 
-st.title("نظام التصميم الإنشائي المتكامل - مشروع برج دمشق (11 طابق)")
+st.title("نظام الحسابات الإنشائية - مشروع برج دمشق")
 st.markdown("---")
 
-# تبويبات المشروع
-tabs = st.tabs(["البلاطات (Slabs)", "الجوائز (Beams)", "الأعمدة (Columns)", "الأساسات والزلازل"])
+# تبويبات المشروع لتنظيم الحسابات
+tabs = st.tabs(["البلاطات (Slabs)", "الجوائز (Beams)", "الأعمدة والجدران", "الأساسات والدرج"])
 
 # --- 1. قسم البلاطات ---
 with tabs[0]:
-    st.header("دراسة البلاطات")
-    l_max = st.number_input("طول أكبر مجاز L (cm):", value=530)
+    st.header("تصميم البلاطات")
+    l_max = st.number_input("أدخل طول أكبر مجاز L (cm):", value=530, key="slab_l")
     
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("سقف القبو (مصمتة)")
-        # [span_0](start_span)حسب التقرير: المحيط المكافئ / 140[span_0](end_span)
-        h_solid = l_max / 35 # تقريب للمحيط المكافئ
-        st.write(f"• السماكة المحسوبة: {h_solid:.1f} cm")
-        [span_1](start_span)st.success("• السماكة المعتمدة: 12 cm[span_1](end_span)")
+        # المحيط المكافئ / 140 حسب الملف
+        h_calc = l_max / 35 
+        st.write(f"• السماكة المحسوبة إنشائياً: {h_calc:.1f} cm")
+        st.success("• السماكة المعتمدة: 12 cm")
         
         st.subheader("الملجأ")
-        [span_2](start_span)st.warning("• السماكة المعتمدة: 20 cm (توصيات الدفاع)[span_2](end_span)")
-        [span_3](start_span)st.write("• الحمولة الحية: 20 kN/m²[span_3](end_span)")
+        st.warning("• السماكة المعتمدة: 20 cm (حسب وزارة الدفاع)")
+        st.write("• الحمولة الحية: 20 kN/m²")
 
     with col2:
-        st.subheader("المتكرر (هوردي)")
-        case = st.selectbox("حالة الاستناد للعصب:", ["بسيط (L/16)", "مستمر طرف (L/18)", "مستمر طرفين (L/20)", "ظفر (L/8)"])
+        st.subheader("البلاطة الهوردي")
+        st_case = st.selectbox("حالة الاستمرار للعصب:", ["بسيط (L/16)", "مستمر طرف (L/18)", "مستمر طرفين (L/20)", "ظفر (L/8)"])
         divs = {"بسيط (L/16)": 16, "مستمر طرف (L/18)": 18, "مستمر طرفين (L/20)": 20, "ظفر (L/8)": 8}
-        h_rib = l_max / divs[case]
-        [span_4](start_span)[span_5](start_span)st.write(f"• السماكة الدنيا المطلوبة: {h_rib:.1f} cm[span_4](end_span)[span_5](end_span)")
-        [span_6](start_span)[span_7](start_span)st.success("• السماكة المعتمدة: 30 cm (24 بلوك + 6 تغطية)[span_6](end_span)[span_7](end_span)")
+        h_rib_min = l_max / divs[st_case]
+        st.write(f"• السماكة الدنيا المطلوبة: {h_rib_min:.1f} cm")
+        st.success("• السماكة المعتمدة: 30 cm (24 بلوك + 6 تغطية)")
 
 # --- 2. قسم الجوائز ---
 with tabs[1]:
-    st.header("دراسة الجوائز (Beams)")
-    
+    st.header("تصميم الجوائز (Beams)")
     st.subheader("الجوائز الساقطة (سقف القبو)")
-    [span_8](start_span)h_drop = l_max / 14 # شرط السهم L/14[span_8](end_span)
-    st.write(f"• الارتفاع المطلوب (L/14): {h_drop:.1f} cm")
-    [span_9](start_span)st.success("• الأبعاد المعتمدة: 30x50 cm (زيادة 10سم للأمان)[span_9](end_span)")
+    # حسب الملف شرط السهم L/14
+    h_beam = l_max / 14
+    st.write(f"• الارتفاع المطلوب حسب شرط السهم (L/14): {h_beam:.1f} cm")
+    st.success("• الأبعاد المعتمدة: 30x50 cm (زيادة 10 سم للأمان)")
     
-    st.subheader("الجوائز المخفية (Hidden Beams)")
-    [span_10](start_span)b_hidden = l_max / 4 # الجائز الوسطي L/4[span_10](end_span)
-    st.write(f"• العرض المطلوب للجائز الوسطي: {b_hidden:.1f} cm")
-    [span_11](start_span)st.success("• العرض المعتمد في المخطط: 105 cm[span_11](end_span)")
+    st.subheader("الجوائز المخفية (الهوردي)")
+    # حسب الملف وسطي L/4 وطرفي L/6
+    b_hidden = l_max / 4
+    st.write(f"• العرض الأدنى المطلوب للجائز الوسطي: {b_hidden:.1f} cm")
+    st.success("• العرض المعتمد في المخطط: 105 cm")
 
-# --- 3. قسم الأعمدة ---
+# --- 3. قسم الأعمدة والجدران ---
 with tabs[2]:
-    st.header("تدرج أبعاد الأعمدة (Columns)")
-    [span_12](start_span)st.info("نسبة التسليح الدنيا المعتمدة: 1%[span_12](end_span)")
+    st.header("تدرج الأعمدة (Columns)")
+    st.info("نسبة التسليح الدنيا المعتمدة: 1%")
     
-    col_data = {
-        "الطابق": ["القبو", "السطح الأخير"],
+    st.table({
+        "موقع العمود": ["القبو (C1)", "السطح الأخير"],
         "الأبعاد (cm)": ["30x100", "30x50"],
         "نسبة التسليح": ["1%", "1%"]
-    }
-    [span_13](start_span)st.table(col_data) #[span_13](end_span)
+    })
+    
+    st.subheader("جدران القص (Shear Walls)")
+    st.write("• السماكة في القبو: 40 cm")
+    st.write("• تتدرج للأعلى حتى تصل إلى: 25 cm")
 
-# --- 4. الأساسات والزلازل ---
+# --- 4. الأساسات والدرج ---
 with tabs[3]:
-    st.header("الحصيرة والتحليل الزلزالي")
+    st.header("الحصيرة والدرج")
     
     st.subheader("الحصيرة (Raft)")
-    [span_14](start_span)st.write(f"• السماكة حسب الكود السوري (L/6): {(l_max/6):.1f} cm[span_14](end_span)")
-    [span_15](start_span)st.success("• السماكة المعتمدة: 90 cm (لتقليل الحديد وتحقيق الثقب)[span_15](end_span)")
-    [span_16](start_span)[span_17](start_span)st.write("• التسليح: 7 T 20 بالاتجاهين[span_16](end_span)[span_17](end_span)")
-    
-    st.subheader("معطيات دمشق (UBC 97)")
-    [span_18](start_span)st.write("• المنطقة: 2C | التسارع: 0.25[span_18](end_span)")
-    [span_19](start_span)st.write("• التربة: C | Ca=0.29 | Cv=0.38[span_19](end_span)")
-    [span_20](start_span)st.write("• معامل الاستجابة R (جدران قص): 4.5[span_20](end_span)")
+    # الكود السوري L/6 إلى L/8
+    h_raft_syr = l_max / 6
+    st.write(f"• السماكة حسب الكود السوري (L/6): {h_raft_syr:.1f} cm")
+    st.success("• السماكة المعتمدة: 90 cm (لتحقيق الثقب وتقليل الحديد)")
+    st.write("• التسليح المعتمد: 7T20/m بالاتجاهين")
+
+    st.subheader("الدرج (Stairs)")
+    l_stair = 290
+    st.write(f"• طول الشاحط: {l_stair} cm")
+    st.write(f"• سماكة الشاحط المعتمدة: 15 cm (بناءً على L/20)")
+    st.write("• الزاوية المعتمدة: 27 درجة")
+    st.write("• الحمولة الحية: 4 kN/m² (مع معامل ديناميك)")
 
 st.divider()
-st.caption("تمت البرمجة وفق دراسة الدكتور فادي نقرش - إعداد م. بيلان")
+st.caption("برمجية مخصصة لمشروع الدكتور فادي نقرش - إعداد المهندس بيلان")
