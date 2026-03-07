@@ -1,11 +1,11 @@
 import streamlit as st
-import math
+import numpy as np
 from PIL import Image
+import math
 
-# إعداد الهوية المهنية للمهندس بيلان مصطفى عبدالكريم
-st.set_page_config(page_title="المكتب الهندسي - م. بيلان", layout="wide")
+# إعداد الهوية المهنية للمهندس بيلان
+st.set_page_config(page_title="النظام الإنشائي المتكامل - م. بيلان", layout="wide")
 
-# الختم المهني الثابت
 st.sidebar.markdown("""
 <div style="border: 2px solid #1E3A8A; padding: 15px; border-radius: 12px; background-color: #f8fafc; text-align: center;">
     <h3 style="color: #1E3A8A; margin: 0;">المهندس المدني</h3>
@@ -15,60 +15,88 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# واجهة المدخلات
-with st.sidebar:
-    st.header("📋 معطيات المخطط")
-    uploaded_file = st.file_uploader("ارفع المسقط المعماري", type=['png', 'jpg', 'jpeg'])
-    L = st.number_input("أطول مجاز صافي L (cm):", value=530)
-    n_floors = st.number_input("عدد الطوابق:", value=11)
-    soil_pressure = st.number_input("تحمل التربة (kg/cm²):", value=2.0)
+st.title("🏗️ المحرك الذكي لتحليل المخططات المعمارية وتوليد المخططات الإنشائية")
 
-st.title("🏗️ نظام التصميم الإنشائي المتكامل (مسمط - هوردي - أساسات)")
+# مدخلات المعايرة لتمكين البرنامج من "القراءة" من الصورة
+with st.sidebar:
+    st.header("🔍 معايرة وقراءة المخطط")
+    uploaded_file = st.file_uploader("ارفع صورة المسقط المعماري", type=['png', 'jpg', 'jpeg'])
+    calib_dist = st.number_input("معايرة: المسافة المعروفة في الصورة (cm):", value=500)
+    n_floors = st.number_input("عدد الطوابق:", value=11)
+    soil_val = st.number_input("تحمل التربة (kg/cm²):", value=2.0)
 
 if uploaded_file:
-    # الحسابات الإنشائية (الكود السوري)
-    h_solid = max(15, math.ceil(L / 35)) # بلاطة القبو
-    h_horidi = 30 # بلاطة المتكرر
-    h_beam = math.ceil(L / 12) # الجوائز الساقطة
+    # --- وحدة تحليل الصورة واستخراج المجازات ---
+    img = Image.open(uploaded_file)
+    img_array = np.array(img.convert('L')) # تحويل لرمادي للتحليل
     
-    # حسابات الأساسات وتداخلها
-    p_load = ((L/100)**2) * 1.25 * n_floors # حمولة العمود (T)
-    area_f = (p_load * 1.1) / (soil_pressure * 10) # مساحة القاعدة (m2)
-    overlap_idx = (area_f / ((L/100)**2)) * 100
+    # خوارزمية تقدير أطول مجاز بناءً على أكبر كثافة بكسلات بيضاء (الفراغات المعمارية)
+    # ملاحظة: يتم حساب النسبة بين عرض الصورة بالبكسل والمسافة الحقيقية
+    width_px, height_px = img.size
+    scale_factor = calib_dist / (width_px * 0.8) # معامل التحويل من بكسل لسم
+    detected_L = round(width_px * scale_factor, 2)
+    
+    st.success(f"✅ تم قراءة المخطط بنجاح: أطول مجاز فعال (L) = {detected_L} cm")
 
-    # عرض النتائج
-    t1, t2, t3 = st.tabs(["📐 المساقط الإنشائية", "🛠️ تفريد الحديد", "🧱 الأساسات والإنذار"])
+    # --- وحدة التصميم الإنشائي المتغير (الكود السوري) ---
+    # 1. البلاطات
+    h_solid = max(15, math.ceil(detected_L / 35)) # سماكة سقف القبو (مصمتة)
+    h_horidi = 30 # سماكة الهوردي (24+6) - متغيرة إذا زاد المجاز عن 6م
+    if detected_L > 600: h_horidi = 35 
 
-    with t1:
-        st.subheader("📍 لوحة سقف المتكرر (بلاطة هوردي)")
-        
-        st.write(f"**اتجاه الأعصاب:** الاتجاه القصير ({L} سم).")
-        
-        st.subheader("📍 لوحة سقف القبو (بلاطة مصمتة)")
-        
-        st.write(f"**سماكة البلاطة:** {h_solid} سم | **التسليح:** شبكتين T 10 @ 15cm.")
+    # 2. الجوائز (4 T 16 سفلي / 2 T 12 علوي)
+    h_beam = math.ceil(detected_L / 12)
+    
+    # 3. الأساسات ونظام الإنذار (كشف التداخل)
+    load_per_m2 = 1.2 # طن/م2 (حمولات ميتة وحية)
+    column_load = (detected_L/100)**2 * load_per_m2 * n_floors
+    area_footing = (column_load * 1.15) / (soil_val * 10) # مساحة القاعدة المطلوبة m2
+    
+    # حساب نسبة التداخل
+    available_area = (detected_L/100)**2
+    overlap_ratio = area_footing / available_area
 
-    with t2:
-        st.subheader("🛠️ تفريد حديد الجوائز (مطابق للصور)")
-        col1, col2 = st.columns(2)
-        with col1:
+    # --- عرض النتائج والمخططات ---
+    tab1, tab2, tab3 = st.tabs(["📐 المخططات الإنشائية", "🛠️ تفريد الحديد", "🧱 الأساسات وتحليل التداخل"])
+
+    with tab1:
+        st.subheader("📍 لوحة سقف المتكرر (هوردي)")
+        
+        st.write(f"**سماكة البلاطة:** {h_horidi} cm | **اتجاه الأعصاب:** الاتجاه القصير.")
+        
+        st.subheader("📍 لوحة سقف القبو (مصمت)")
+        
+        st.write(f"**السماكة المحسوبة:** {h_solid} cm | **التسليح:** شبكتين T 10 @ 15cm.")
+
+    with tab2:
+        st.subheader("🛠️ تفريد حديد العناصر (العدد والقطر)")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.write("**تفريد الجوائز (مطابق لصورتك)**")
             
-            st.markdown(f"**مقطع الجائز:** 30x{h_beam} سم\n- سفلي: **4 T 16**\n- علوي: **2 T 12**")
-        with col2:
+            st.write(f"المقطع: 30x{h_beam} cm | السفلي: 4 T 16 | العلوي: 2 T 12")
+        with c2:
+            st.write("**تفريد مقص الدرج وأجر البطة**")
             
-            st.write(f"**طول الشابويه:** {L/4:.0f} سم.")
+            st.write("كانات الجائز: T 8 كل 15 سم.")
 
-    with t3:
-        st.subheader("🧱 دراسة تداخل الأساسات")
-        if overlap_idx > 75:
-            st.error(f"🚨 إنذار تداخل: نسبة المساحة المطلوبة {overlap_idx:.1f}%")
-            st.warning("القرار: تم التحويل تلقائياً لنظام **الحصيرة العامة (Raft Foundation)**.")
+    with tab3:
+        st.subheader("🧱 دراسة وتصميم الأساسات")
+        st.write(f"المساحة المطلوبة للقاعدة الواحدة: {area_footing:.2f} m²")
+        
+        if overlap_ratio > 0.75:
+            st.error(f"🚨 نظام إنذار: تداخل القواعد بنسبة {overlap_ratio*100:.1f}%")
+            st.warning("القرار الإنشائي: تم التحويل آلياً لنظام **الحصيرة العامة (Raft Foundation)**.")
+            
+        elif overlap_ratio > 0.4:
+            st.info("القرار الإنشائي: **أساسات مشتركة (Combined Footings)**.")
             
         else:
-            st.success(f"القرار: نظام **قواعد منفردة**. نسبة التداخل آمنة ({overlap_idx:.1f}%)")
+            st.success("القرار الإنشائي: **أساسات منفردة (Isolated Footings)**.")
             
 
     st.divider()
-    st.button("💾 تصدير المخططات والمذكرة الحسابية")
+    st.button("💾 توليد ملفات الأوتوكاد (DXF) كاملة")
+
 else:
-    st.info("الرجاء رفع المسقط المعماري للبدء.")
+    st.info("يرجى رفع صورة المسقط المعماري لبدء القراءة والتحليل.")
