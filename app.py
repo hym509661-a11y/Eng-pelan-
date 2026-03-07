@@ -1,8 +1,7 @@
 import streamlit as st
 import math
-from PIL import Image
 
-# إعداد الهوية المهنية للمهندس بيلان مصطفى عبدالكريم
+# إعداد الهوية المهنية للمهندس بيلان
 st.set_page_config(page_title="النظام الإنشائي الشامل - م. بيلان", layout="wide")
 
 # الختم المهني في الشريط الجانبي
@@ -15,85 +14,61 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# مدخلات المشروع
 with st.sidebar:
-    st.header("⚙️ مدخلات التحليل الذكي")
-    uploaded_file = st.file_uploader("ارفع صورة المسقط المعماري", type=['png', 'jpg', 'jpeg'])
+    st.header("⚙️ مدخلات التحليل")
+    uploaded_file = st.file_uploader("ارفع صورة المخطط المعماري", type=['png', 'jpg', 'jpeg'])
     n_floors = st.number_input("عدد الطوابق الإجمالي:", value=11)
-    soil_capacity = st.number_input("تحمل التربة (kg/cm²):", value=2.0, step=0.1)
-    st.divider()
-    st.info("نظام التحليل: بلاطة قبو مصمتة + طوابق متكررة هوردي.")
+    soil_cap = st.number_input("تحمل التربة (kg/cm²):", value=2.0)
+    L_input = st.number_input("أطول مجاز صافي (cm):", value=530)
 
-st.title("🚀 النظام المتكامل لتوليد المخططات الإنشائية والأساسات")
+st.title("🚀 النظام الذكي لتصميم البلاطات والأساسات والكشف عن التداخل")
 
 if uploaded_file:
-    # --- 1. تحليل الصورة والمجازات ---
-    img = Image.open(uploaded_file)
-    w, h = img.size
-    # منطق تقدير المجازات بناءً على نسبة أبعاد الصورة (معايرة افتراضية)
-    # ملاحظة: المجاز الأساسي L يعتمد على تحليل كثافة العناصر المعمارية
-    L = 530 # قيمة افتراضية مستخلصة للبدء بالحساب
+    # --- 1. حسابات البلاطات (الكود السوري) ---
+    h_solid = max(15, math.ceil(L_input / 35)) # سماكة سقف القبو
+    h_horidi = 30 # سماكة سقف المتكرر (24 بلوكة + 6 تغطية)
+    h_beam = math.ceil(L_input / 12) # سماكة الجوائز
     
-    st.success(f"✅ تم تحليل المسقط المعماري: أطول مجاز فعال تم رصده L = {L} cm")
-
-    # --- 2. التصميم الإنشائي (الكود السوري) ---
-    # البلاطات
-    h_solid_qabo = max(15, math.ceil(L / 35)) # سماكة المصمتة للقبو
-    h_horidi = 30 # سماكة الهوردي للمتكرر (24 بلوكة + 6 تغطية)
+    # --- 2. حسابات الأساسات ونظام الإنذار ---
+    p_column = ((L_input/100)**2) * 1.25 * n_floors # حمولة العمود بالطن
+    area_needed = (p_column * 1.1) / (soil_cap * 10) # مساحة القاعدة المطلوبة m2
+    total_area = (L_input/100)**2 # مساحة المسقط التقديرية m2
+    overlap = (area_needed / total_area) * 100
     
-    # الجوائز (4 T 16 سفلي / 2 T 12 علوي)
-    h_beam = math.ceil(L / 12)
-    
-    # الأعمدة (تدرج كل 3 طوابق)
-    p_load = ((L/100)**2) * 1.25 * n_floors # حمولة العمود التقديرية (طن)
-    col_dim = max(50, math.ceil((p_load * 1000) / (0.35*250 + 0.67*0.01*4000) / 30 / 10) * 10)
-
-    # --- 3. دراسة الأساسات ونظام الإنذار ---
-    footing_area_needed = (p_load * 1.1) / (soil_capacity * 10) # m²
-    grid_area = (L/100)**2
-    overlap_ratio = footing_area_needed / grid_area
-    
-    foundation_decision = ""
-    warning_status = False
-    
-    if overlap_ratio < 0.5:
-        foundation_decision = "أساسات منفردة (Isolated Footings)"
-    elif 0.5 <= overlap_ratio < 0.8:
-        foundation_decision = "أساسات مشتركة (Combined Footings)"
-    else:
-        foundation_decision = "حصيرة عامة (Raft Foundation)"
-        warning_status = True
-
-    # --- 4. عرض النتائج والمخططات ---
+    # --- 3. عرض المخططات والنتائج ---
     tab1, tab2, tab3 = st.tabs(["📐 المخططات الإنشائية", "🛠️ تفريد الحديد", "🧱 دراسة الأساسات"])
 
     with tab1:
-        st.subheader("📍 لوحة توزيع الأعصاب (بلاطة هوردي المتكرر)")
-                st.write(f"**سماكة البلاطة:** {h_horidi} cm | **اتجاه الأعصاب:** الاتجاه القصير ({L} cm).")
+        st.subheader("📍 سقف المتكرر (بلاطة هوردي)")
+                st.write(f"**سماكة البلاطة:** {h_horidi} cm | **اتجاه الأعصاب:** الاتجاه القصير ({L_input} cm).")
         
-        st.subheader("📍 لوحة سقف القبو (بلاطة مصمتة)")
-                st.write(f"**سماكة البلاطة:** {h_solid_qabo} cm | **التسليح:** شبكتين T 10 @ 15cm.")
+        st.subheader("📍 سقف القبو (بلاطة مصمتة)")
+                st.write(f"**سماكة البلاطة:** {h_solid} cm | **التسليح:** شبكتين T 10 كل 15 سم.")
 
     with tab2:
-        st.subheader("🛠️ لوحات تفريد الحديد (Shop Drawings)")
+        st.subheader("🛠️ تفريد حديد العناصر (العدد والقطر)")
         col_a, col_b = st.columns(2)
         with col_a:
             st.write("**تفريد حديد الجائز الرئيسي**")
                         st.markdown(f"- السفلي: **4 T 16**\n- العلوي: **2 T 12**\n- المقطع: **30x{h_beam} cm**")
         with col_b:
             st.write("**تفريد حديد الأعمدة**")
-                        st.write(f"مقطع القبو: **30x{col_dim} cm** (ينقص 10 سم كل 3 طوابق).")
+                        st.write(f"مقطع القبو: **30x{max(50, math.ceil(p_column/10)*5)} cm**")
+            st.caption("تدرج العمود: ينقص المقطع 10 سم كل 3 طوابق.")
 
     with tab3:
-        st.subheader("🧱 تحليل ونوع الأساسات")
-        if warning_status:
-            st.error(f"🚨 نظام إنذار: تداخل القواعد وصل إلى {overlap_ratio*100:.1f}%.")
-            st.warning(f"القرار الهندسي: تم اعتماد **{foundation_decision}** لمنع التداخلات.")
-                        st.write(f"**السماكة المقترحة للحصيرة:** {max(80, n_floors*8)} cm.")
-        else:
-            st.success(f"نوع الأساس المقترح: **{foundation_decision}**")
+        st.subheader("🧱 دراسة تداخل الأساسات")
+        st.write(f"**نسبة تداخل القواعد المتوقعة:** {overlap:.1f}%")
+        
+        if overlap > 70:
+            st.error(f"🚨 نظام إنذار: تداخل القواعد كبير جداً ({overlap:.1f}%).")
+            st.warning("القرار الهندسي: تم التحويل تلقائياً لنظام **الحصيرة العامة (Raft Foundation)**.")
+                    else:
+            st.success("القرار الهندسي: نظام **قواعد منفردة** مع ربطها بشناج (Tie Beams).")
             
     st.divider()
-    st.button("💾 توليد ملف AutoCAD (DXF) والمذكرة الحسابية")
+    st.info("تم التصميم والتحليل وفق المذكرة الحسابية - م. بيلان مصطفى")
 
 else:
-    st.info("الرجاء رفع صورة المخطط المعماري للبدء بالتحليل الإنشائي المتكامل.")
+    st.warning("الرجاء رفع صورة المخطط المعماري لبدء التحليل الإنشائي.")
