@@ -2,72 +2,71 @@ import streamlit as st
 import ezdxf
 import io
 
-def draw_section(msp, x, y, w, l, name):
-    x, y, w, l = float(x), float(y), float(w), float(l)
-    beam_w = 0.60   # عرض الجائز المخفي
-    rib_w = 0.10    # سماكة العصب 10 سم
-    block_w = 0.40  # عرض بلوك الهوردي
-    spacing = rib_w + block_w # الخطوة الإنشائية 50 سم
+# دالة ذكية لرسم أي بلاطة هوردي مهما كانت أبعادها
+def draw_hordi_slab(msp, width, length, slab_name="Slab"):
+    beam_w = 0.60   # عرض الجائز المخفي ثابت
+    rib_w = 0.10    # عصب 10 سم
+    block_w = 0.40  # بلوك 40 سم
+    spacing = rib_w + block_w # 0.50m
     
-    # 1. رسم الجوائز المخفية (باللون الأزرق)
-    msp.add_lwpolyline([(x, y), (x+w, y), (x+w, y+l), (x, y+l), (x, y)], dxfattribs={'layer': 'BEAMS', 'color': 5})
-    msp.add_lwpolyline([(x+beam_w, y+beam_w), (x+w-beam_w, y+beam_w), 
-                        (x+w-beam_w, y+l-beam_w), (x+beam_w, y+l-beam_w), (x+beam_w, y+beam_w)], 
-                        dxfattribs={'layer': 'BEAMS', 'color': 5})
+    # رسم الجوائز (اللون الأزرق)
+    msp.add_lwpolyline([(0, 0), (width, 0), (width, length), (0, length), (0, 0)], dxfattribs={'layer': 'BEAMS', 'color': 5})
+    msp.add_lwpolyline([(beam_w, beam_w), (width-beam_w, beam_w), (width-beam_w, length-beam_w), (beam_w, length-beam_w), (beam_w, beam_w)], dxfattribs={'layer': 'BEAMS', 'color': 5})
 
-    # 2. رسم الأعصاب المزدوجة (Double Ribs) كما في المخطط
-    if w <= l: # الاتجاه القصير
-        num = int((l - 2*beam_w) / spacing)
+    # توزيع الأعصاب في الاتجاه القصير تلقائياً
+    if width <= length:
+        num = int((length - 2*beam_w) / spacing)
         for i in range(1, num + 1):
-            yp = y + beam_w + (i * spacing)
-            msp.add_line((x+beam_w, yp), (x+w-beam_w, yp), dxfattribs={'layer': 'RIBS', 'color': 8})
-            msp.add_line((x+beam_w, yp-rib_w), (x+w-beam_w, yp-rib_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+            y = beam_w + (i * spacing)
+            msp.add_line((beam_w, y), (width-beam_w, y), dxfattribs={'layer': 'RIBS', 'color': 8})
+            msp.add_line((beam_w, y-rib_w), (width-beam_w, y-rib_w), dxfattribs={'layer': 'RIBS', 'color': 8})
     else:
-        num = int((w - 2*beam_w) / spacing)
+        num = int((width - 2*beam_w) / spacing)
         for i in range(1, num + 1):
-            xp = x + beam_w + (i * spacing)
-            msp.add_line((xp, y+beam_w), (xp, y+l-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
-            msp.add_line((xp-rib_w, y+beam_w), (xp-rib_w, y+l-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+            x = beam_w + (i * spacing)
+            msp.add_line((x, beam_w), (x, length-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+            msp.add_line((x-rib_w, beam_w), (x-rib_w, length-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
 
-    # 3. تسمية الفراغ المعماري
-    txt = msp.add_text(name, dxfattribs={'height': 0.25, 'color': 7})
-    txt.dxf.insert = (x + beam_w + 0.2, y + l - 0.5)
+    # إضافة اسم البلاطة
+    txt = msp.add_text(slab_name, dxfattribs={'height': 0.3, 'color': 7})
+    txt.dxf.insert = (width/2 - 0.5, length/2)
 
 def main():
-    st.set_page_config(page_title="Pelan Structural Pro", layout="wide")
-    st.title("🏗️ محرك بيلان الإنشائي v5.0")
+    st.set_page_config(page_title="By Pelan - Structural Engine", layout="centered")
+    st.title("🏗️ محرك بيلان الهندسي الشامل")
+    st.write("أدخل أبعاد أي مشروع لتوليد مخطط الهوردي فوراً")
+
+    # مدخلات ديناميكية لأي مشروع
+    col1, col2 = st.columns(2)
+    with col1:
+        w = st.number_input("عرض البلاطة (متر)", min_value=1.0, value=4.0, step=0.1)
+    with col2:
+        l = st.number_input("طول البلاطة (متر)", min_value=1.0, value=5.0, step=0.1)
     
-    doc = ezdxf.new('R2010', setup=True)
-    msp = doc.modelspace()
-    
-    # تعريف الطبقات الأساسية
-    for layer, color in [('BEAMS', 5), ('RIBS', 8), ('TEXT', 7)]:
-        if layer not in doc.layers: doc.layers.new(name=layer, dxfattribs={'color': color})
+    project_name = st.text_input("اسم المشروع/الغرفة", value="غرفة نوم")
 
-    # توزيع المسقط المعماري 150م2
-    layout = [
-        {'n': 'الصالون', 'p': (0, 0), 'd': (3.5, 5.5)},
-        {'n': 'غرفة نوم 1', 'p': (3.5, 0), 'd': (3.55, 5.5)},
-        {'n': 'المطبخ', 'p': (0, 5.5), 'd': (3.1, 4.5)},
-        {'n': 'بيت الدرج', 'p': (3.1, 5.5), 'd': (2.4, 3.0)},
-        {'n': 'غرفة نوم 2', 'p': (5.5, 5.5), 'd': (3.35, 5.0)},
-    ]
-
-    for room in layout:
-        draw_section(msp, room['p'][0], room['p'][1], room['d'][0], room['d'][1], room['n'])
-
-    if st.button("توليد وتحميل المخطط"):
-        # حل مشكلة العرض النصي: الحفظ بتنسيق ثنائي (Binary)
-        buf = io.BytesIO()
-        doc.write(buf)
-        byte_data = buf.getvalue()
-        
-        st.download_button(
-            label="💾 اضغط هنا لتحميل ملف الأوتوكاد",
-            data=byte_data,
-            file_name="Pelan_Hordi_Plan.dxf",
-            mime="application/octet-stream" # يمنع المتصفح من فتحه كنص
-        )
+    if st.button("توليد المخطط الآن"):
+        try:
+            doc = ezdxf.new('R2010', setup=True)
+            msp = doc.modelspace()
+            
+            # رسم البلاطة بالأبعاد المدخلة
+            draw_hordi_slab(msp, w, l, project_name)
+            
+            # معالجة الملف للتحميل المباشر
+            buf = io.BytesIO()
+            doc.write(buf)
+            byte_data = buf.getvalue()
+            
+            st.success(f"✅ تم تجهيز مخطط {project_name} بنجاح!")
+            st.download_button(
+                label="💾 تحميل ملف الأوتوكاد (DXF)",
+                data=byte_data,
+                file_name=f"{project_name}.dxf",
+                mime="application/octet-stream"
+            )
+        except Exception as e:
+            st.error(f"حدث خطأ: {e}")
 
 if __name__ == "__main__":
     main()
