@@ -2,67 +2,61 @@ import streamlit as st
 import ezdxf
 import io
 
-def draw_structural_element(msp, x, y, w, h, beam_w=0.6, rib_spacing=0.5, rib_w=0.1):
-    # تحويل القيم لضمان عدم حدوث خطأ في النوع
-    x, y, w, h = float(x), float(y), float(w), float(h)
+def draw_section(msp, x, y, w, l, name):
+    # تحويل للقيم العشرية لضمان الدقة
+    x, y, w, l = float(x), float(y), float(w), float(l)
+    beam_w = 0.60  # عرض الجائز المخفي 60 سم
     
-    # 1. رسم حدود الغرفة (الجوائز)
-    outer_points = [(x, y), (x+w, y), (x+w, y+h), (x, y+h), (x, y)]
-    msp.add_lwpolyline(outer_points, dxfattribs={'layer': 'BEAMS', 'color': 5})
-    
-    inner_points = [(x+beam_w, y+beam_w), (x+w-beam_w, y+beam_w), 
-                    (x+w-beam_w, y+h-beam_w), (x+beam_w, y+h-beam_w), (x+beam_w, y+beam_w)]
-    msp.add_lwpolyline(inner_points, dxfattribs={'layer': 'BEAMS', 'color': 5})
+    # 1. رسم الجوائز المحيطة (الحد الخارجي والداخلي)
+    msp.add_lwpolyline([(x, y), (x+w, y), (x+w, y+l), (x, y+l), (x, y)], dxfattribs={'layer': 'BEAMS', 'color': 5})
+    msp.add_lwpolyline([(x+beam_w, y+beam_w), (x+w-beam_w, y+beam_w), 
+                        (x+w-beam_w, y+l-beam_w), (x+beam_w, y+l-beam_w), (x+beam_w, y+beam_w)], 
+                        dxfattribs={'layer': 'BEAMS', 'color': 5})
 
-    # 2. رسم الأعصاب (Ribs) في الاتجاه القصير
-    if w <= h:
-        num_ribs = int((h - 2*beam_w) / rib_spacing)
-        for i in range(1, num_ribs + 1):
-            ry = y + beam_w + (i * rib_spacing)
-            msp.add_line((x+beam_w, ry), (x+w-beam_w, ry), dxfattribs={'layer': 'RIBS', 'color': 8})
-            msp.add_line((x+beam_w, ry-rib_w), (x+w-beam_w, ry-rib_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+    # 2. توزيع الأعصاب (Ribs) في الاتجاه القصير هندسياً
+    spacing = 0.50  # 40 سم بلوك + 10 سم عصب
+    if w <= l:
+        num = int((l - 2*beam_w) / spacing)
+        for i in range(1, num + 1):
+            yp = y + beam_w + (i * spacing)
+            msp.add_line((x+beam_w, yp), (x+w-beam_w, yp), dxfattribs={'layer': 'RIBS', 'color': 8})
     else:
-        num_ribs = int((w - 2*beam_w) / rib_spacing)
-        for i in range(1, num_ribs + 1):
-            rx = x + beam_w + (i * rib_spacing)
-            msp.add_line((rx, y+beam_w), (rx, y+h-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
-            msp.add_line((rx-rib_w, y+beam_w), (rx-rib_w, y+h-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+        num = int((w - 2*beam_w) / spacing)
+        for i in range(1, num + 1):
+            xp = x + beam_w + (i * spacing)
+            msp.add_line((xp, y+beam_w), (xp, y+l-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
 
-    # 3. رسم الأعمدة (Columns) - تم تصحيح القائمة هنا
-    col_size = 0.4
-    col_corners = [(x, y), (x+w-col_size, y), (x+w-col_size, y+h-col_size), (x, y+h-col_size)]
-    for cx, cy in col_corners:
-        # يجب تمرير النقاط كقائمة واحدة داخل add_lwpolyline
-        cp = [(cx, cy), (cx+col_size, cy), (cx+col_size, cy+col_size), (cx, cy+col_size), (cx, cy)]
-        msp.add_lwpolyline(cp, dxfattribs={'layer': 'COLUMNS', 'color': 1})
+    # 3. إضافة نص اسم الغرفة
+    msp.add_text(name, dxfattribs={'height': 0.2, 'color': 7}).set_pos((x+beam_w+0.2, y+l-0.5))
 
 def main():
-    st.title("Pelan Structural Pro v2.1")
-    st.write("توليد مخطط إنشائي دقيق (جوائز، أعصاب، وأعمدة)")
-    
+    st.title("بوابة بيلان للهندسة الإنشائية")
+    st.subheader("توليد مخطط بلاطة هوردي مطابق للمعماري 150م²")
+
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
     
     # تعريف الطبقات
-    if 'BEAMS' not in doc.layers: doc.layers.new(name='BEAMS', dxfattribs={'color': 5})
-    if 'RIBS' not in doc.layers: doc.layers.new(name='RIBS', dxfattribs={'color': 8})
-    if 'COLUMNS' not in doc.layers: doc.layers.new(name='COLUMNS', dxfattribs={'color': 1})
+    for layer, color in [('BEAMS', 5), ('RIBS', 8), ('COLUMNS', 1)]:
+        if layer not in doc.layers: doc.layers.new(name=layer, dxfattribs={'color': color})
 
-    # بيانات مشروع الـ 150م2
-    rooms = [
-        {'pos': (0, 0), 'dim': (3.5, 5.5)},
-        {'pos': (3.5, 0), 'dim': (3.5, 5.5)},
-        {'pos': (0, 5.5), 'dim': (3.1, 4.5)},
-        {'pos': (3.1, 5.5), 'dim': (3.9, 4.5)}
+    # الإحداثيات المستخرجة من صورتك المعمارية (150 m2)
+    # ملاحظة: تم ضبط المواقع لتكون متجاورة تماماً كما في الرسم
+    layout = [
+        {'n': 'الصالون', 'p': (0, 0), 'd': (3.50, 5.50)},
+        {'n': 'غرفة نوم 1', 'p': (3.50, 0), 'd': (3.55, 5.50)},
+        {'n': 'المطبخ', 'p': (0, 5.50), 'd': (3.10, 4.50)},
+        {'n': 'بيت الدرج', 'p': (3.10, 5.50), 'd': (2.40, 3.00)},
+        {'n': 'غرفة نوم 2', 'p': (5.50, 5.50), 'd': (3.35, 5.00)},
     ]
 
-    for room in rooms:
-        draw_structural_element(msp, room['pos'][0], room['pos'][1], room['dim'][0], room['dim'][1])
+    for item in layout:
+        draw_section(msp, item['p'][0], item['p'][1], item['d'][0], item['d'][1], item['n'])
 
-    if st.button("توليد المخطط الآن"):
+    if st.button("توليد المخطط المطابق للمعماري"):
         out = io.StringIO()
         doc.write(out)
-        st.download_button("💾 تحميل الملف DXF", out.getvalue(), "Pelan_Final_Plan.dxf")
+        st.download_button("💾 تحميل ملف DXF للأوتوكاد", out.getvalue(), "Pelan_Final_Plan.dxf")
 
 if __name__ == "__main__":
     main()
