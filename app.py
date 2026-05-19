@@ -1,60 +1,56 @@
-import pandas as pd
-import streamlit as st
+import ezdxf
 
-class PelanEngine:
-    def __init__(self):
-        self.project_data = []
+def create_ribbed_slab(filename, rooms):
+    # إنشاء ملف DXF جديد (متوافق مع أوتوكاد 2010 فما فوق)
+    doc = ezdxf.new('R2010')
+    msp = doc.modelspace()
 
-    def add_column(self, name, load_kn, fc, fy):
-        # حساب مقطع العمود التقريبي (P = 0.35*fc*Ac + 0.67*fy*As)
-        # بفرض نسبة تسليح 1%
-        ac_req = (load_kn * 1000) / (0.35 * fc + 0.67 * fy * 0.01)
-        side = (ac_req)**0.5
-        self.project_data.append({
-            'Element': 'Column',
-            'ID': name,
-            'Result': f"{round(side/10)*10}x{round(side/10)*10} mm",
-            'Steel': f"{round(ac_req*0.01)} mm²"
-        })
+    # تعريف الطبقات (Layers) بألوان مهنية
+    doc.layers.new(name='COLUMNS', dxfattribs={'color': 1}) # أحمر
+    doc.layers.new(name='BEAMS', dxfattribs={'color': 5})   # أزرق
+    doc.layers.new(name='RIBS', dxfattribs={'color': 8})    # رمادي
+    doc.layers.new(name='TEXT', dxfattribs={'color': 7})    # أبيض
 
-    def add_beam(self, name, mu_knm, b, d, fc, fy):
-        # كود التصميم الذي كتبناه سابقاً
-        phi = 0.9
-        rn = (mu_knm * 10**6) / (phi * b * d**2)
-        m = fy / (0.85 * fc)
-        rho = (1/m) * (1 - (1 - (2*m*rn/fy))**0.5)
-        as_req = rho * b * d
-        self.project_data.append({
-            'Element': 'Beam',
-            'ID': name,
-            'Result': f"{b}x{int(d+40)} mm",
-            'Steel': f"{round(as_req)} mm²"
-        })
+    for room in rooms:
+        name = room['name']
+        x, y = room['pos']
+        w, h = room['dim']
+        
+        # 1. رسم حدود الغرفة (الجوائز المحيطة)
+        msp.add_lwpolyline([(x, y), (x+w, y), (x+w, y+h), (x, y+h), (x, y)], 
+                           dxfattribs={'layer': 'BEAMS', 'lineweight': 30})
 
-# واجهة الاستخدام
-st.title("Pelan Structural Workstation v1.0")
+        # 2. العمليات الحسابية لتوزيع الأعصاب (Engineering Logic)
+        # نختار الاتجاه القصير دوماً لتوفير الحديد وتقليل الترخيم
+        spacing = 0.50  # المسافة بين محاور الأعصاب (40 سم بلوك + 10 سم عصب)
+        
+        if w <= h: # الاتجاه القصير هو X (الأعصاب أفقية)
+            num_ribs = int(h / spacing)
+            for i in range(1, num_ribs):
+                y_rib = y + (i * spacing)
+                msp.add_line((x, y_rib), (x + w, y_rib), dxfattribs={'layer': 'RIBS'})
+        else: # الاتجاه القصير هو Y (الأعصاب رأسية)
+            num_ribs = int(w / spacing)
+            for i in range(1, num_ribs):
+                x_rib = x + (i * spacing)
+                msp.add_line((x_rib, y), (x_rib, y + h), dxfattribs={'layer': 'RIBS'})
 
-engine = PelanEngine()
+        # 3. إضافة نصوص توضيحية
+        msp.add_text(f"{name} ({w}x{h})", 
+                     dxfattribs={'layer': 'TEXT', 'height': 0.2}).set_pos((x+0.2, y+h-0.3))
 
-tab1, tab2, tab3 = st.tabs(["الأعمدة", "الجوائز", "الأساسات"])
+    # حفظ الملف
+    doc.saveas(filename)
+    print(f"تم توليد المخطط بنجاح: {filename}")
 
-with tab1:
-    col_name = st.text_input("اسم العمود", "C1")
-    load = st.number_input("الحمولة التصاعدية (kN)", value=1200)
-    if st.button("إضافة العمود للمشروع"):
-        engine.add_column(col_name, load, 20, 400)
-        st.success(f"تمت إضافة {col_name}")
+# --- إدخالات مشروعك (150 متر مربع) بناءً على المعماري ---
+# الإحداثيات (pos) والأبعاد (dim) مأخوذة من المخطط الذي أرسلته
+my_project_rooms = [
+    {'name': 'Salon', 'pos': (0, 0), 'dim': (3.5, 5.5)},
+    {'name': 'Bedroom 1', 'pos': (3.5, 0), 'dim': (3.5, 5.5)},
+    {'name': 'Kitchen', 'pos': (0, 5.5), 'dim': (3.1, 4.5)},
+    {'name': 'Stairs', 'pos': (3.1, 5.5), 'dim': (2.4, 3.0)},
+    {'name': 'Room 3', 'pos': (5.5, 5.5), 'dim': (3.3, 5.0)},
+]
 
-with tab2:
-    beam_name = st.text_input("اسم الجائز", "B1")
-    mu = st.number_input("العزم (kN.m)", value=180)
-    if st.button("إضافة الجائز للمشروع"):
-        engine.add_beam(beam_name, mu, 200, 460, 20, 400)
-        st.success(f"تمت إضافة {beam_name}")
-
-# عرض النتائج النهائية للتصدير
-if len(engine.project_data) > 0:
-    df = pd.DataFrame(engine.project_data)
-    st.table(df)
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("تصدير ملف المشروع المتكامل", csv, "project_pelan.csv")
+create_ribbed_slab("Pelan_Structural_Plan.dxf", my_project_rooms)
