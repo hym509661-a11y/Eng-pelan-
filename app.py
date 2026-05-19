@@ -2,70 +2,55 @@ import streamlit as st
 import ezdxf
 import io
 
-def generate_dxf(rooms_data):
-    # إنشاء مستند DXF جديد
+def draw_structural_element(msp, x, y, w, h, beam_w=0.6, rib_spacing=0.5, rib_w=0.1):
+    # 1. رسم الجوائز المخفية (Hidden Beams) المحيطة
+    # سنرسم خطين لكل جانب لتمثيل عرض الجائز
+    msp.add_lwpolyline([(x, y), (x+w, y), (x+w, y+h), (x, y+h), (x, y)], dxfattribs={'layer': 'BEAMS', 'color': 5})
+    msp.add_lwpolyline([(x+beam_w, y+beam_w), (x+w-beam_w, y+beam_w), 
+                        (x+w-beam_w, y+h-beam_w), (x+beam_w, y+h-beam_w), (x+beam_w, y+beam_w)], 
+                        dxfattribs={'layer': 'BEAMS', 'color': 5})
+
+    # 2. رسم الأعصاب (Ribs) في الاتجاه القصير كخطوط مزدوجة
+    if w <= h:
+        num_ribs = int((h - 2*beam_w) / rib_spacing)
+        for i in range(1, num_ribs + 1):
+            ry = y + beam_w + (i * rib_spacing)
+            msp.add_line((x+beam_w, ry), (x+w-beam_w, ry), dxfattribs={'layer': 'RIBS', 'color': 8})
+            msp.add_line((x+beam_w, ry-rib_w), (x+w-beam_w, ry-rib_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+    else:
+        num_ribs = int((w - 2*beam_w) / rib_spacing)
+        for i in range(1, num_ribs + 1):
+            rx = x + beam_w + (i * rib_spacing)
+            msp.add_line((rx, y+beam_w), (rx, y+h-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+            msp.add_line((rx-rib_w, y+beam_w), (rx-rib_w, y+h-beam_w), dxfattribs={'layer': 'RIBS', 'color': 8})
+
+    # 3. رسم الأعمدة (Columns) في الزوايا الأربعة للغرفة
+    col_size = 0.4
+    for px, py in [(x,y), (x+w-col_size, y), (x+w-col_size, y+h-col_size), (x, y+h-col_size)]:
+        msp.add_lwpolyline([(px, py), (px+col_size, py), (px+col_size, py+col_size), (px, py+col_size), (px, py)], 
+                           is_closed=True, dxfattribs={'layer': 'COLUMNS', 'color': 1})
+
+def main():
+    st.title("Pelan Structural Engine v2.0")
+    
     doc = ezdxf.new('R2010')
     msp = doc.modelspace()
     
-    # إنشاء الطبقات
-    if 'BEAMS' not in doc.layers:
-        doc.layers.new(name='BEAMS', dxfattribs={'color': 5})
-    if 'RIBS' not in doc.layers:
-        doc.layers.new(name='RIBS', dxfattribs={'color': 8})
-    
-    for room in rooms_data:
-        # التأكد من تحويل القيم إلى أرقام عشرية لتجنب TypeError
-        x = float(room['pos'][0])
-        y = float(room['pos'][1])
-        w = float(room['dim'][0])
-        l = float(room['dim'][1])
-        
-        # رسم حدود الغرفة (الجوائز) - تم إصلاح طريقة تمرير النقاط هنا
-        points = [(x, y), (x + w, y), (x + w, y + l), (x, y + l), (x, y)]
-        msp.add_lwpolyline(points, dxfattribs={'layer': 'BEAMS'})
-        
-        # منطق هندسي: توزيع الأعصاب في الاتجاه القصير
-        spacing = 0.50
-        if w <= l:
-            # الأعصاب موازية لمحور X
-            num_ribs = int(l / spacing)
-            for i in range(1, num_ribs):
-                y_pos = y + (i * spacing)
-                msp.add_line((x, y_pos), (x + w, y_pos), dxfattribs={'layer': 'RIBS'})
-        else:
-            # الأعصاب موازية لمحور Y
-            num_ribs = int(w / spacing)
-            for i in range(1, num_ribs):
-                x_pos = x + (i * spacing)
-                msp.add_line((x_pos, y), (x_pos, y + l), dxfattribs={'layer': 'RIBS'})
+    # تعريف الغرف بناءً على مساحة الـ 150م2 بدقة
+    rooms = [
+        {'name': 'Salon', 'pos': (0, 0), 'dim': (3.5, 5.5)},
+        {'name': 'Kitchen', 'pos': (0, 5.5), 'dim': (3.1, 4.5)},
+        {'name': 'Bed1', 'pos': (3.5, 0), 'dim': (3.5, 5.5)},
+        {'name': 'Entrance', 'pos': (3.1, 5.5), 'dim': (3.9, 4.5)}
+    ]
 
-    # استخدام StringIO أو BytesIO للتوافق مع Streamlit download
-    out = io.StringIO()
-    doc.write(out)
-    return out.getvalue()
+    for room in rooms:
+        draw_structural_element(msp, room['pos'][0], room['pos'][1], room['dim'][0], room['dim'][1])
 
-# واجهة التطبيق
-st.set_page_config(page_title="Pelan Structural Pro", layout="centered")
-st.title("🏗️ محرك بيلان الإنشائي")
-st.subheader("توليد مخططات الهوردي للأوتوكاد (150م²)")
+    if st.button("توليد المخطط الهندسي الاحترافي"):
+        out = io.StringIO()
+        doc.write(out)
+        st.download_button("تحميل الملف DXF", out.getvalue(), "Professional_Slab.dxf")
 
-# البيانات مأخوذة من مسقطك المعماري بدقة
-rooms = [
-    {'name': 'الصالون', 'pos': (0, 0), 'dim': (3.5, 5.5)},
-    {'name': 'المطبخ', 'pos': (0, 5.5), 'dim': (3.1, 4.5)},
-    {'name': 'غرفة النوم', 'pos': (3.5, 0), 'dim': (3.5, 5.5)},
-    {'name': 'الممر/بيت الدرج', 'pos': (3.1, 5.5), 'dim': (2.4, 3.0)}
-]
-
-if st.button("توليد ملف DXF الآن"):
-    try:
-        dxf_str = generate_dxf(rooms)
-        st.success("تم توليد المخطط بنجاح!")
-        st.download_button(
-            label="💾 تحميل المخطط للأوتوكاد",
-            data=dxf_str,
-            file_name="Pelan_Structural_Project.dxf",
-            mime="application/dxf"
-        )
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء التوليد: {e}")
+if __name__ == "__main__":
+    main()
